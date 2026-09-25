@@ -1,122 +1,73 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import Layout from './components/Layout'
+import { useStore } from './store/context'
+import { getMembershipStatus } from './store/utils'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import ManagerDashboard from './pages/manager/Dashboard'
+import Packages from './pages/manager/Packages'
+import Rooms from './pages/manager/Rooms'
+import Classes from './pages/manager/Classes'
+import MemberHome from './pages/member/MemberHome'
+import BuyPackage from './pages/member/BuyPackage'
+import MemberSchedule from './pages/member/MemberSchedule'
+import Profile from './pages/member/Profile'
+import MemberSearch from './pages/receptionist/MemberSearch'
+import CounterRegister from './pages/receptionist/CounterRegister'
+import Invoices from './pages/receptionist/Invoices'
+import CoachSchedule from './pages/coach/CoachSchedule'
 
-function App() {
-  const [count, setCount] = useState(0)
+const MENUS = {
+  manager: [
+    { key: 'dashboard', label: 'Tổng quan', icon: '📊', el: ManagerDashboard },
+    { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: Packages },
+    { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
+    { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
+  ],
+  receptionist: [
+    { key: 'counter', label: 'Đăng ký tại quầy', icon: '📝', el: CounterRegister },
+    { key: 'search', label: 'Tra cứu hội viên', icon: '🔎', el: MemberSearch },
+    { key: 'invoices', label: 'Hóa đơn', icon: '🧾', el: Invoices },
+  ],
+  coach: [{ key: 'schedule', label: 'Lịch dạy', icon: '📅', el: CoachSchedule }],
+  member: [
+    { key: 'home', label: 'Trang của tôi', icon: '🏠', el: MemberHome },
+    { key: 'buy', label: 'Gói tập', icon: '🎫', el: BuyPackage },
+    { key: 'schedule', label: 'Lịch lớp học', icon: '📅', el: MemberSchedule },
+    { key: 'profile', label: 'Hồ sơ', icon: '👤', el: Profile },
+  ],
+}
 
+function RoleApp({ user, initialPage }) {
+  const [page, setPage] = useState(initialPage)
+  const menu = MENUS[user.role]
+  const Page = (menu.find((m) => m.key === page) || menu[0]).el
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <Layout menu={menu} page={page} setPage={setPage}>
+      <Page goTo={setPage} />
+    </Layout>
   )
 }
 
-export default App
+function AuthScreens() {
+  const [authView, setAuthView] = useState('login')
+  return authView === 'login' ? (
+    <Login onRegister={() => setAuthView('register')} />
+  ) : (
+    <Register onLogin={() => setAuthView('login')} />
+  )
+}
+
+export default function App() {
+  const { currentUser, memberships } = useStore()
+
+  if (!currentUser) return <AuthScreens />
+
+  let initialPage = MENUS[currentUser.role][0].key
+  // Member mới chưa có gói: đưa thẳng tới trang chọn gói
+  if (currentUser.role === 'member' && getMembershipStatus(currentUser.id, memberships).status === 'none') {
+    initialPage = 'buy'
+  }
+
+  return <RoleApp key={currentUser.id} user={currentUser} initialPage={initialPage} />
+}
