@@ -1,8 +1,8 @@
-import { ROLES } from '../data/seed'
 import { useStore } from '../store/context'
+import { ROLE_LABELS } from '../store/roles'
 
 export default function Layout({ menu, page, setPage, children }) {
-  const { currentUser, logout } = useStore()
+  const { session, logout } = useStore()
   const current = menu.find((m) => m.key === page)
 
   return (
@@ -26,10 +26,10 @@ export default function Layout({ menu, page, setPage, children }) {
         </nav>
         <div className="sidebar-foot">
           <div className="user-chip">
-            <div className="avatar">{currentUser.name.split(' ').pop()[0]}</div>
+            <div className="avatar">{(session.name || '?').trim().split(' ').pop()[0]}</div>
             <div>
-              <div className="user-name">{currentUser.name}</div>
-              <div className="user-role">{ROLES[currentUser.role]}</div>
+              <div className="user-name">{session.name}</div>
+              <div className="user-role">{ROLE_LABELS[session.role]}</div>
             </div>
           </div>
           <button className="btn btn-ghost full" onClick={logout}>
@@ -40,7 +40,7 @@ export default function Layout({ menu, page, setPage, children }) {
       <main className="main">
         <header className="topbar">
           <h1>{current?.label}</h1>
-          <span className="role-pill">{ROLES[currentUser.role]}</span>
+          <span className="role-pill">{ROLE_LABELS[session.role]}</span>
         </header>
         <div className="content">{children}</div>
       </main>

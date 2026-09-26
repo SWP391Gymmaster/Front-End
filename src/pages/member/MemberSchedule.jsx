@@ -1,24 +1,35 @@
-import { useStore } from '../../store/context'
+import { ErrorBox, Loading } from '../../components/Status'
+import WeekTimetable from '../../components/WeekTimetable'
+import { classApi, coachApi, roomApi, scheduleApi } from '../../api/services'
+import useApi from '../../api/useApi'
 
 export default function MemberSchedule() {
-  const { classes, rooms, users } = useStore()
+  const { data, loading, error, reload } = useApi(() =>
+    Promise.all([scheduleApi.list(), classApi.list(), roomApi.list(), coachApi.list()]).then(
+      ([schedules, classes, rooms, coaches]) => ({ schedules, classes, rooms, coaches }),
+    ),
+  )
+
+  const items = (data?.schedules || []).map((s) => {
+    const c = data.classes.find((x) => x.id === s.classId)
+    return {
+      id: s.id,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      subject: c?.subject,
+      title: c?.name || 'Lớp #' + s.classId,
+      lines: [
+        'HLV ' + (data.coaches.find((x) => x.id === s.coachId)?.fullName || '—'),
+        data.rooms.find((r) => r.id === s.roomId)?.name || '',
+      ],
+    }
+  })
+
   return (
     <div className="card">
-      <div className="card-head"><h3>Các lớp đang mở</h3></div>
-      <table className="table">
-        <thead><tr><th>Lớp</th><th>Bộ môn</th><th>Huấn luyện viên</th><th>Phòng</th><th>Lịch</th></tr></thead>
-        <tbody>
-          {classes.map((c) => (
-            <tr key={c.id}>
-              <td><strong>{c.name}</strong></td>
-              <td>{c.subject}</td>
-              <td>{users.find((u) => u.id === c.coachId)?.name}</td>
-              <td>{rooms.find((r) => r.id === c.roomId)?.name}</td>
-              <td>{c.days.join(', ')} · {c.start}–{c.end}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="card-head"><h3>Lịch các lớp đang mở</h3></div>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : <WeekTimetable items={items} emptyText="Không có lớp" />}
     </div>
   )
 }

@@ -1,11 +1,9 @@
 import { useStore } from '../store/context'
 import { formatDate, formatMoney } from '../store/utils'
 
-export default function Invoice({ payment, membership }) {
-  const { users, packages } = useStore()
-  const member = users.find((u) => u.id === payment.userId)
-  const staff = users.find((u) => u.id === payment.staffId)
-  const pkg = packages.find((p) => p.id === payment.packageId)
+export default function Invoice({ payment }) {
+  const { members } = useStore()
+  const member = members.find((m) => m.email === payment.email)
 
   return (
     <div className="invoice print-area">
@@ -22,17 +20,13 @@ export default function Invoice({ payment, membership }) {
       </div>
       <table className="table invoice-table">
         <tbody>
-          <tr><td>Hội viên</td><td>{member?.name}</td></tr>
-          <tr><td>Số điện thoại</td><td>{member?.phone}</td></tr>
-          <tr><td>Gói tập</td><td>{pkg?.name}</td></tr>
-          {membership && (
-            <tr>
-              <td>Thời hạn</td>
-              <td>{formatDate(membership.startDate)} → {formatDate(membership.endDate)}</td>
-            </tr>
-          )}
+          <tr><td>Hội viên</td><td>{member?.fullName || payment.email}</td></tr>
+          {member?.phone && <tr><td>Số điện thoại</td><td>{member.phone}</td></tr>}
+          <tr><td>Email</td><td>{payment.email}</td></tr>
+          <tr><td>Gói tập</td><td>{payment.packageName}</td></tr>
+          <tr><td>Thời hạn</td><td>{formatDate(payment.startDate)} → {formatDate(payment.endDate)}</td></tr>
           <tr><td>Hình thức</td><td>{payment.method} ({payment.channel})</td></tr>
-          {staff && <tr><td>Nhân viên thu</td><td>{staff.name}</td></tr>}
+          {payment.staffName && <tr><td>Nhân viên thu</td><td>{payment.staffName}</td></tr>}
         </tbody>
       </table>
       <div className="invoice-total">

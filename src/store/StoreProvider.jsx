@@ -1,172 +1,143 @@
 import { useEffect, useState } from 'react'
-import { seedData } from '../data/seed'
+import { sessionStore } from '../api/client'
+import { authApi } from '../api/services'
 import { StoreContext } from './context'
 import { addDays, getMembershipStatus, newId, todayISO } from './utils'
 
-const STORAGE_KEY = 'gymmaster-demo-v1'
+// ============================================================
+// DỮ LIỆU TẠM (MOCK): các chức năng Back-End CHƯA có API
+//   - hội viên đã đăng ký, gói tập đã mua, thanh toán, hóa đơn
+// Lưu trong localStorage của trình duyệt. Khi Back-End có API
+// thì thay các hàm purchase / addMember bằng lời gọi API tương ứng.
+// ============================================================
+const MOCK_KEY = 'gm-mock-v2'
 
-const loadState = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return JSON.parse(saved)
-  } catch {
-    // bỏ qua, dùng dữ liệu mẫu
-  }
-  return { ...seedData, currentUserId: null }
+const MOCK_SEED = {
+  members: [
+    { email: 'member@example.com', fullName: 'Demo Member', phone: '0900000003', createdAt: todayISO() },
+  ],
+  memberships: [],
+  payments: [],
 }
 
+const loadMock = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MOCK_KEY))
+    if (saved) return saved
+  } catch {
+    // dùng dữ liệu mẫu
+  }
+  return MOCK_SEED
+}
+
+const ROLE_MAP = { MANAGER: 'manager', RECEPTIONIST: 'receptionist', COACH: 'coach', MEMBER: 'member' }
+
+const toSession = (res) => ({
+  token: res.token,
+  userId: res.userId,
+  email: res.email,
+  name: res.fullName,
+  role: ROLE_MAP[res.role] || 'member',
+})
+
 export default function StoreProvider({ children }) {
-  const [state, setState] = useState(loadState)
+  const [session, setSession] = useState(sessionStore.get)
+  const [mock, setMock] = useState(loadMock)
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+    localStorage.setItem(MOCK_KEY, JSON.stringify(mock))
+  }, [mock])
 
-  const update = (fn) => setState((s) => ({ ...s, ...fn(s) }))
+  // Token hết hạn / không hợp lệ -> đăng xuất
+  useEffect(() => {
+    const onUnauthorized = () => {
+      sessionStore.clear()
+      setSession(null)
+      setNotice('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại')
+    }
+    window.addEventListener('gm:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('gm:unauthorized', onUnauthorized)
+  }, [])
 
-  const currentUser = state.users.find((u) => u.id === state.currentUserId) || null
+  const upsertMember = (m) =>
+    setMock((s) => ({
+      ...s,
+      members: s.members.some((x) => x.email === m.email)
+        ? s.members.map((x) => (x.email === m.email ? { ...x, ...m } : x))
+        : [...s.members, { createdAt: todayISO(), ...m }],
+    }))
+
+  const startSession = (res, extra = {}) => {
+    const s = { ...toSession(res), ...extra }
+    sessionStore.set(s)
+    setSession(s)
+    setNotice('')
+    if (s.role === 'member') upsertMember({ email: s.email, fullName: s.name, ...(extra.phone ? { phone: extra.phone } : {}) })
+    return s
+  }
 
   const actions = {
-    login(email, password) {
-      const user = state.users.find(
-        (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password,
-      )
-      if (!user) return { ok: false, message: 'Email hoặc mật khẩu không đúng' }
-      update(() => ({ currentUserId: user.id }))
-      return { ok: true, user }
+    // ---------- API thật ----------
+    async login(email, password) {
+      const res = await authApi.login(email.trim(), password)
+      return startSession(res)
+    },
+
+    async register({ userName, fullName, email, phone, password }) {
+      const res = await authApi.register({ userName, fullName, email: email.trim(), phone, password })
+      return startSession(res, { phone })
     },
 
     logout() {
-      update(() => ({ currentUserId: null }))
+      sessionStore.clear()
+      setSession(null)
     },
 
-    // Member tự đăng ký tài khoản
-    register(data) {
-      if (state.users.some((u) => u.email.toLowerCase() === data.email.trim().toLowerCase())) {
-        return { ok: false, message: 'Email đã được sử dụng' }
-      }
-      const user = { ...data, email: data.email.trim(), id: newId('u'), role: 'member' }
-      update((s) => ({ users: [...s.users, user], currentUserId: user.id }))
-      return { ok: true, user }
-    },
+    // ---------- Dữ liệu tạm ----------
+    addMember: upsertMember,
 
-    updateProfile(userId, data) {
-      update((s) => ({ users: s.users.map((u) => (u.id === userId ? { ...u, ...data } : u)) }))
-    },
-
-    // ---- Center Manager ----
-    savePackage(pkg) {
-      update((s) => ({
-        packages: pkg.id
-          ? s.packages.map((p) => (p.id === pkg.id ? pkg : p))
-          : [...s.packages, { ...pkg, id: newId('p') }],
-      }))
-    },
-    togglePackage(id) {
-      update((s) => ({
-        packages: s.packages.map((p) => (p.id === id ? { ...p, active: !p.active } : p)),
-      }))
-    },
-    saveRoom(room) {
-      update((s) => ({
-        rooms: room.id
-          ? s.rooms.map((r) => (r.id === room.id ? room : r))
-          : [...s.rooms, { ...room, id: newId('r') }],
-      }))
-    },
-    saveClass(cls) {
-      update((s) => ({
-        classes: cls.id
-          ? s.classes.map((c) => (c.id === cls.id ? cls : c))
-          : [...s.classes, { ...cls, id: newId('c') }],
-      }))
-    },
-    deleteClass(id) {
-      update((s) => ({ classes: s.classes.filter((c) => c.id !== id) }))
-    },
-
-    // ---- Mua / gia hạn gói (Member online hoặc Receptionist tại quầy) ----
-    purchase({ userId, packageId, method, channel, staffId = null }) {
-      const pkg = state.packages.find((p) => p.id === packageId)
-      const current = getMembershipStatus(userId, state.memberships)
-      const startDate =
-        current.status === 'active' ? addDays(current.membership.endDate, 1) : todayISO()
+    // Mua / gia hạn gói. pkg là object gói lấy từ API.
+    purchase({ email, pkg, method, channel, staffName = null }) {
+      const current = getMembershipStatus(email, mock.memberships)
+      const startDate = current.status === 'active' ? addDays(current.membership.endDate, 1) : todayISO()
       const membership = {
         id: newId('m'),
-        userId,
-        packageId,
+        email,
+        packageId: pkg.id,
+        packageName: pkg.name,
         startDate,
-        endDate: addDays(startDate, pkg.days - 1),
+        endDate: addDays(startDate, pkg.durationDays - 1),
       }
       const payment = {
         id: newId('pay'),
-        invoiceNo: 'HD' + String(state.payments.length + 1).padStart(4, '0'),
-        userId,
-        packageId,
+        invoiceNo: 'HD' + String(mock.payments.length + 1).padStart(4, '0'),
+        email,
+        packageName: pkg.name,
         amount: pkg.price,
         method,
         channel,
-        staffId,
+        staffName,
         date: todayISO(),
+        startDate: membership.startDate,
+        endDate: membership.endDate,
       }
-      update((s) => ({
+      setMock((s) => ({
+        ...s,
         memberships: [...s.memberships, membership],
         payments: [...s.payments, payment],
       }))
       return { membership, payment }
     },
 
-    // Receptionist đăng ký hội viên mới tại quầy
-    registerAtCounter({ name, phone, email, gender, goal, packageId, method, staffId }) {
-      if (state.users.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
-        return { ok: false, message: 'Email đã tồn tại trong hệ thống' }
-      }
-      const pkg = state.packages.find((p) => p.id === packageId)
-      const user = {
-        id: newId('u'),
-        role: 'member',
-        name,
-        phone,
-        email: email.trim(),
-        gender,
-        goal,
-        password: '123456',
-      }
-      const startDate = todayISO()
-      const membership = {
-        id: newId('m'),
-        userId: user.id,
-        packageId,
-        startDate,
-        endDate: addDays(startDate, pkg.days - 1),
-      }
-      const payment = {
-        id: newId('pay'),
-        invoiceNo: 'HD' + String(state.payments.length + 1).padStart(4, '0'),
-        userId: user.id,
-        packageId,
-        amount: pkg.price,
-        method,
-        channel: 'Tại quầy',
-        staffId,
-        date: startDate,
-      }
-      update((s) => ({
-        users: [...s.users, user],
-        memberships: [...s.memberships, membership],
-        payments: [...s.payments, payment],
-      }))
-      return { ok: true, user, membership, payment }
-    },
-
-    resetDemo() {
-      localStorage.removeItem(STORAGE_KEY)
-      setState({ ...seedData, currentUserId: null })
+    resetMock() {
+      localStorage.removeItem(MOCK_KEY)
+      setMock(MOCK_SEED)
     },
   }
 
   return (
-    <StoreContext.Provider value={{ ...state, currentUser, ...actions }}>
+    <StoreContext.Provider value={{ session, notice, ...mock, ...actions }}>
       {children}
     </StoreContext.Provider>
   )

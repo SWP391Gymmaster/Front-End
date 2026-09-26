@@ -1,23 +1,24 @@
+import { MockBadge } from '../../components/Status'
 import { useStore } from '../../store/context'
 import { formatDate, formatMoney, getMembershipStatus } from '../../store/utils'
 
 export default function MemberHome({ goTo }) {
-  const { currentUser, memberships, packages, payments } = useStore()
-  const status = getMembershipStatus(currentUser.id, memberships)
-  const pkg = status.membership && packages.find((p) => p.id === status.membership.packageId)
-  const myPayments = payments.filter((p) => p.userId === currentUser.id).reverse()
+  const { session, members, memberships, payments } = useStore()
+  const status = getMembershipStatus(session.email, memberships)
+  const profile = members.find((m) => m.email === session.email)
+  const myPayments = payments.filter((p) => p.email === session.email).reverse()
 
   return (
     <div className="stack">
       <div className={'membership-card status-' + status.status}>
         <div>
           <div className="muted small">Thẻ hội viên</div>
-          <h2>{currentUser.name}</h2>
-          <div className="small">{currentUser.phone} · Mục tiêu: {currentUser.goal || '—'}</div>
+          <h2>{session.name}</h2>
+          <div className="small">{session.email}{profile?.phone ? ' · ' + profile.phone : ''}</div>
         </div>
         <div className="right">
           <span className="badge">{status.label}</span>
-          {pkg && <div className="mc-pkg">{pkg.name}</div>}
+          {status.membership && <div className="mc-pkg">{status.membership.packageName}</div>}
           {status.status === 'active' && (
             <div className="small">Hết hạn {formatDate(status.membership.endDate)} · còn {status.daysLeft} ngày</div>
           )}
@@ -32,7 +33,7 @@ export default function MemberHome({ goTo }) {
       )}
 
       <div className="card">
-        <div className="card-head"><h3>Lịch sử thanh toán</h3></div>
+        <div className="card-head"><h3>Lịch sử thanh toán <MockBadge /></h3></div>
         {myPayments.length === 0 ? (
           <p className="muted">Chưa có giao dịch.</p>
         ) : (
@@ -42,7 +43,7 @@ export default function MemberHome({ goTo }) {
               {myPayments.map((p) => (
                 <tr key={p.id}>
                   <td>{p.invoiceNo}</td>
-                  <td>{packages.find((x) => x.id === p.packageId)?.name}</td>
+                  <td>{p.packageName}</td>
                   <td>{p.method} ({p.channel})</td>
                   <td>{formatDate(p.date)}</td>
                   <td className="right">{formatMoney(p.amount)}</td>

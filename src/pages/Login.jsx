@@ -1,29 +1,37 @@
 import { useState } from 'react'
-import { ROLES } from '../data/seed'
+import { ROLE_LABELS } from '../store/roles'
 import { useStore } from '../store/context'
 
 const DEMO_ACCOUNTS = [
-  { email: 'manager@gym.vn', role: 'manager' },
-  { email: 'letan@gym.vn', role: 'receptionist' },
-  { email: 'coach@gym.vn', role: 'coach' },
-  { email: 'member@gym.vn', role: 'member' },
+  { email: 'manager@example.com', role: 'manager' },
+  { email: 'receptionist@example.com', role: 'receptionist' },
+  { email: 'coach@example.com', role: 'coach' },
+  { email: 'member@example.com', role: 'member' },
 ]
+const DEMO_PASSWORD = 'password123'
 
 export default function Login({ onRegister }) {
-  const { login, resetDemo } = useStore()
+  const { login, notice, resetMock } = useStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    const res = login(email, password)
-    if (!res.ok) setError(res.message)
+    setLoading(true)
+    setError('')
+    try {
+      await login(email, password)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
   }
 
   const fillDemo = (acc) => {
     setEmail(acc.email)
-    setPassword('123456')
+    setPassword(DEMO_PASSWORD)
     setError('')
   }
 
@@ -49,9 +57,10 @@ export default function Login({ onRegister }) {
             Mật khẩu
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Nhập mật khẩu" />
           </label>
+          {notice && !error && <div className="alert alert-info">{notice}</div>}
           {error && <div className="alert alert-error">{error}</div>}
-          <button className="btn btn-primary full" type="submit">
-            Đăng nhập
+          <button className="btn btn-primary full" type="submit" disabled={loading}>
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
         <p className="center small">
@@ -62,17 +71,17 @@ export default function Login({ onRegister }) {
         </p>
 
         <div className="demo-box">
-          <div className="small muted">Tài khoản demo (mật khẩu 123456), bấm để điền nhanh:</div>
+          <div className="small muted">Tài khoản mẫu (mật khẩu {DEMO_PASSWORD}), bấm để điền nhanh:</div>
           <div className="demo-grid">
             {DEMO_ACCOUNTS.map((acc) => (
               <button key={acc.email} type="button" className="demo-chip" onClick={() => fillDemo(acc)}>
-                <strong>{ROLES[acc.role]}</strong>
+                <strong>{ROLE_LABELS[acc.role]}</strong>
                 <span>{acc.email}</span>
               </button>
             ))}
           </div>
-          <button type="button" className="link small" onClick={resetDemo}>
-            Khôi phục dữ liệu demo ban đầu
+          <button type="button" className="link small" onClick={resetMock}>
+            Xóa dữ liệu tạm (gói đã mua, hóa đơn) để demo lại
           </button>
         </div>
       </div>

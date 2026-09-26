@@ -1,4 +1,16 @@
-export const formatMoney = (n) => Number(n).toLocaleString('vi-VN') + ' đ'
+export const formatMoney = (n) => Number(n || 0).toLocaleString('vi-VN') + ' đ'
+
+const pad = (n) => String(n).padStart(2, '0')
+
+export const toISODate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+export const todayISO = () => toISODate(new Date())
+
+export const addDays = (iso, days) => {
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return toISODate(d)
+}
 
 export const formatDate = (iso) => {
   if (!iso) return ''
@@ -6,48 +18,27 @@ export const formatDate = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-export const todayISO = () => new Date().toISOString().slice(0, 10)
-
-export const addDays = (iso, days) => {
-  const d = new Date(iso)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
-}
+export const formatTime = (dateTime) => dateTime.slice(11, 16)
 
 export const newId = (prefix) => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
 
-const toMinutes = (t) => {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
+export const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+export const dayLabel = (d) => (d === 'CN' ? 'Chủ nhật' : 'Thứ ' + d.slice(1))
+export const dayOf = (iso) => DAYS[(new Date(iso.slice(0, 10) + 'T00:00:00').getDay() + 6) % 7]
+
+export const mondayOf = (iso) => {
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return toISODate(d)
 }
 
-const overlap = (a, b) =>
-  a.days.some((d) => b.days.includes(d)) &&
-  toMinutes(a.start) < toMinutes(b.end) &&
-  toMinutes(b.start) < toMinutes(a.end)
-
-// Kiểm tra trùng lịch: cùng Coach hoặc cùng phòng, trùng ngày và giao nhau về giờ
-export const findConflicts = (candidate, classes) => {
-  const conflicts = []
-  classes
-    .filter((c) => c.id !== candidate.id)
-    .forEach((c) => {
-      if (!overlap(candidate, c)) return
-      if (c.coachId === candidate.coachId) conflicts.push({ type: 'coach', cls: c })
-      if (c.roomId === candidate.roomId) conflicts.push({ type: 'room', cls: c })
-    })
-  return conflicts
-}
-
-// Trạng thái gói tập hiện tại của hội viên
-export const getMembershipStatus = (userId, memberships) => {
-  const list = memberships
-    .filter((m) => m.userId === userId)
-    .sort((a, b) => b.endDate.localeCompare(a.endDate))
-  const latest = list[0]
+export const getMembershipStatus = (email, memberships) => {
+  const latest = memberships
+    .filter((m) => m.email === email)
+    .sort((a, b) => b.endDate.localeCompare(a.endDate))[0]
   if (!latest) return { status: 'none', label: 'Chưa có gói', membership: null }
   const today = todayISO()
   if (latest.endDate < today) return { status: 'expired', label: 'Hết hạn', membership: latest }
-  const daysLeft = Math.ceil((new Date(latest.endDate) - new Date(today)) / 86400000)
+  const daysLeft = Math.round((new Date(latest.endDate) - new Date(today)) / 86400000) + 1
   return { status: 'active', label: 'Đang hoạt động', membership: latest, daysLeft }
 }

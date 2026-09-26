@@ -1,32 +1,46 @@
-import { DAYS } from '../../data/seed'
+import { ErrorBox, Loading } from '../../components/Status'
+import WeekTimetable from '../../components/WeekTimetable'
+import { classApi, roomApi, scheduleApi } from '../../api/services'
+import useApi from '../../api/useApi'
 import { useStore } from '../../store/context'
+import { todayISO } from '../../store/utils'
 
 export default function CoachSchedule() {
-  const { classes, rooms, currentUser } = useStore()
-  const mine = classes.filter((c) => c.coachId === currentUser.id)
+  const { session } = useStore()
+  const { data, loading, error, reload } = useApi(
+    () =>
+      Promise.all([scheduleApi.byCoach(session.userId), classApi.list(), roomApi.list()]).then(
+        ([schedules, classes, rooms]) => ({ schedules, classes, rooms }),
+      ),
+    [session.userId],
+  )
+
+  const schedules = data?.schedules || []
+  const myClasses = new Set(schedules.map((s) => s.classId))
+  const upcoming = schedules.filter((s) => s.startTime.slice(0, 10) >= todayISO()).length
+
+  const items = schedules.map((s) => {
+    const c = data.classes.find((x) => x.id === s.classId)
+    return {
+      id: s.id,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      subject: c?.subject,
+      title: c?.name || 'Lớp #' + s.classId,
+      lines: [data.rooms.find((r) => r.id === s.roomId)?.name || ''],
+    }
+  })
 
   return (
     <div className="stack">
-      <div className="alert alert-info">Bạn đang phụ trách <strong>{mine.length}</strong> lớp do Center Manager phân công.</div>
-      <div className="card">
-        <div className="timetable">
-          {DAYS.map((d) => {
-            const items = mine.filter((c) => c.days.includes(d)).sort((a, b) => a.start.localeCompare(b.start))
-            return (
-              <div key={d} className="tt-col">
-                <div className="tt-day">{d === 'CN' ? 'Chủ nhật' : 'Thứ ' + d.slice(1)}</div>
-                {items.map((c) => (
-                  <div key={c.id} className={'tt-item subj-' + c.subject.toLowerCase()}>
-                    <strong>{c.start}–{c.end}</strong>
-                    <span>{c.name}</span>
-                    <em>{rooms.find((r) => r.id === c.roomId)?.name}</em>
-                  </div>
-                ))}
-                {items.length === 0 && <div className="tt-empty">Nghỉ</div>}
-              </div>
-            )
-          })}
+      <ErrorBox error={error} onRetry={reload} />
+      {data && (
+        <div className="alert alert-info">
+          Bạn đang phụ trách <strong>{myClasses.size}</strong> lớp do Center Manager phân công, còn <strong>{upcoming}</strong> buổi sắp tới.
         </div>
+      )}
+      <div className="card">
+        {loading && !data ? <Loading /> : <WeekTimetable items={items} emptyText="Nghỉ" />}
       </div>
     </div>
   )

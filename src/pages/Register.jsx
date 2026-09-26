@@ -4,26 +4,34 @@ import { useStore } from '../store/context'
 export default function Register({ onLogin }) {
   const { register } = useStore()
   const [form, setForm] = useState({
-    name: '',
+    fullName: '',
+    userName: '',
     email: '',
     phone: '',
-    gender: 'Nam',
-    goal: 'Giảm cân',
     password: '',
     confirm: '',
   })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
+    if (!/^[a-zA-Z0-9_.]{3,}$/.test(form.userName)) {
+      return setError('Tên đăng nhập tối thiểu 3 ký tự, chỉ gồm chữ không dấu, số, dấu _ hoặc .')
+    }
     if (!/^0\d{9}$/.test(form.phone)) return setError('Số điện thoại phải gồm 10 số, bắt đầu bằng 0')
-    if (form.password.length < 6) return setError('Mật khẩu tối thiểu 6 ký tự')
+    if (form.password.length < 8) return setError('Mật khẩu tối thiểu 8 ký tự')
     if (form.password !== form.confirm) return setError('Mật khẩu xác nhận không khớp')
-    const { confirm: _confirm, ...data } = form
-    const res = register(data)
-    if (!res.ok) setError(res.message)
+    setError('')
+    setLoading(true)
+    try {
+      await register(form)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
   }
 
   return (
@@ -42,40 +50,25 @@ export default function Register({ onLogin }) {
         <form onSubmit={submit} className="form">
           <label>
             Họ và tên
-            <input value={form.name} onChange={set('name')} required placeholder="Nguyễn Văn A" />
+            <input value={form.fullName} onChange={set('fullName')} required placeholder="Nguyễn Văn A" />
           </label>
           <div className="row-2">
             <label>
-              Email
-              <input type="email" value={form.email} onChange={set('email')} required />
+              Tên đăng nhập
+              <input value={form.userName} onChange={set('userName')} required placeholder="nguyenvana" />
             </label>
             <label>
               Số điện thoại
               <input value={form.phone} onChange={set('phone')} required placeholder="09xxxxxxxx" />
             </label>
           </div>
+          <label>
+            Email
+            <input type="email" value={form.email} onChange={set('email')} required />
+          </label>
           <div className="row-2">
             <label>
-              Giới tính
-              <select value={form.gender} onChange={set('gender')}>
-                <option>Nam</option>
-                <option>Nữ</option>
-                <option>Khác</option>
-              </select>
-            </label>
-            <label>
-              Mục tiêu tập luyện
-              <select value={form.goal} onChange={set('goal')}>
-                <option>Giảm cân</option>
-                <option>Tăng cơ</option>
-                <option>Giữ dáng</option>
-                <option>Cải thiện sức khỏe</option>
-              </select>
-            </label>
-          </div>
-          <div className="row-2">
-            <label>
-              Mật khẩu
+              Mật khẩu (tối thiểu 8 ký tự)
               <input type="password" value={form.password} onChange={set('password')} required />
             </label>
             <label>
@@ -84,8 +77,8 @@ export default function Register({ onLogin }) {
             </label>
           </div>
           {error && <div className="alert alert-error">{error}</div>}
-          <button className="btn btn-primary full" type="submit">
-            Tạo tài khoản
+          <button className="btn btn-primary full" type="submit" disabled={loading}>
+            {loading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
           </button>
         </form>
         <p className="center small">

@@ -38,9 +38,9 @@ const MENUS = {
   ],
 }
 
-function RoleApp({ user, initialPage }) {
+function RoleApp({ role, initialPage }) {
   const [page, setPage] = useState(initialPage)
-  const menu = MENUS[user.role]
+  const menu = MENUS[role]
   const Page = (menu.find((m) => m.key === page) || menu[0]).el
   return (
     <Layout menu={menu} page={page} setPage={setPage}>
@@ -50,24 +50,24 @@ function RoleApp({ user, initialPage }) {
 }
 
 function AuthScreens() {
-  const [authView, setAuthView] = useState('login')
-  return authView === 'login' ? (
-    <Login onRegister={() => setAuthView('register')} />
+  const [view, setView] = useState('login')
+  return view === 'login' ? (
+    <Login onRegister={() => setView('register')} />
   ) : (
-    <Register onLogin={() => setAuthView('login')} />
+    <Register onLogin={() => setView('login')} />
   )
 }
 
 export default function App() {
-  const { currentUser, memberships } = useStore()
+  const { session, memberships } = useStore()
 
-  if (!currentUser) return <AuthScreens />
+  if (!session) return <AuthScreens />
 
-  let initialPage = MENUS[currentUser.role][0].key
-  // Member mới chưa có gói: đưa thẳng tới trang chọn gói
-  if (currentUser.role === 'member' && getMembershipStatus(currentUser.id, memberships).status === 'none') {
+  let initialPage = MENUS[session.role][0].key
+  // Member chưa có gói: đưa thẳng tới trang chọn gói
+  if (session.role === 'member' && getMembershipStatus(session.email, memberships).status === 'none') {
     initialPage = 'buy'
   }
 
-  return <RoleApp key={currentUser.id} user={currentUser} initialPage={initialPage} />
+  return <RoleApp key={session.email} role={session.role} initialPage={initialPage} />
 }
