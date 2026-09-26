@@ -1,6 +1,10 @@
+import { usePreferences } from '../preferences/context'
 import { useState } from 'react'
 import { ROLES } from '../data/seed'
 import { useStore } from '../store/context'
+import AuthHero from '../components/AuthHero'
+import PreferencesControls from '../components/PreferencesControls'
+import Icon from '../components/Icon'
 
 const DEMO_ACCOUNTS = [
   { email: 'manager@gym.vn', role: 'manager' },
@@ -10,6 +14,7 @@ const DEMO_ACCOUNTS = [
 ]
 
 export default function Login({ onRegister }) {
+  const { t } = usePreferences()
   const { login, resetDemo } = useStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,53 +34,43 @@ export default function Login({ onRegister }) {
 
   return (
     <div className="auth-page">
-      <div className="auth-hero">
-        <div className="brand big">
-          <span className="brand-logo">GM</span>
-          <span className="brand-text">GymMaster</span>
-        </div>
-        <h2>Hệ thống quản lý trung tâm thể hình</h2>
-        <p>Quản lý gói tập, lớp học, lịch huấn luyện và hội viên trên một nền tảng.</p>
-      </div>
-
+      <AuthHero />
+      <section className="auth-panel">
+      <div className="auth-top"><span className="workspace-label">{t("Không gian làm việc của bạn")}</span><PreferencesControls /></div>
       <div className="auth-card">
-        <h3>Đăng nhập</h3>
+        <div className="auth-welcome-icon"><Icon name="dumbbell" size={26} /></div>
+        <div className="eyebrow muted">{t("CHÀO MỪNG ĐẾN VỚI GYMMASTER")}</div>
+        <h3>{t("Chào mừng trở lại")}</h3>
+        <p className="auth-description">{t("Đăng nhập để bắt đầu một ngày hiệu quả.")}</p>
         <form onSubmit={submit} className="form">
-          <label>
-            Email
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="ban@email.com" />
+          <label>{t("Email")}<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder={t("ban@email.com")} />
           </label>
-          <label>
-            Mật khẩu
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Nhập mật khẩu" />
+          <label>{t("Mật khẩu")}<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder={t("Nhập mật khẩu")} />
           </label>
-          {error && <div className="alert alert-error">{error}</div>}
-          <button className="btn btn-primary full" type="submit">
-            Đăng nhập
+          {error && <div className="alert alert-error">{t(error)}</div>}
+          <button className="btn btn-primary full" type="submit">{t("Đăng nhập ")}<Icon name="arrow" size={18} />
           </button>
         </form>
-        <p className="center small">
-          Chưa có tài khoản?{' '}
-          <button className="link" onClick={onRegister}>
-            Đăng ký hội viên
-          </button>
+        <p className="center small">{t("Chưa có tài khoản?")}{' '}
+          <button className="link" onClick={onRegister}>{t("Đăng ký hội viên")}</button>
         </p>
 
         <div className="demo-box">
-          <div className="small muted">Tài khoản demo (mật khẩu 123456), bấm để điền nhanh:</div>
+          <div className="demo-heading"><strong>{t("Khám phá bản demo")}</strong><span className="badge badge-green">{t("4 vai trò")}</span></div>
+          <div className="small muted">{t("Chọn vai trò để điền nhanh · Mật khẩu: 123456")}</div>
           <div className="demo-grid">
             {DEMO_ACCOUNTS.map((acc) => (
               <button key={acc.email} type="button" className="demo-chip" onClick={() => fillDemo(acc)}>
-                <strong>{ROLES[acc.role]}</strong>
-                <span>{acc.email}</span>
+                <Icon name={acc.role === 'manager' ? 'grid' : acc.role === 'coach' ? 'dumbbell' : 'user'} size={19} />
+                <div><strong>{t(ROLES[acc.role])}</strong><span>{acc.email}</span></div>
               </button>
             ))}
           </div>
-          <button type="button" className="link small" onClick={resetDemo}>
-            Khôi phục dữ liệu demo ban đầu
-          </button>
+          <button type="button" className="link small" onClick={resetDemo}>{t("Khôi phục dữ liệu demo ban đầu")}</button>
         </div>
       </div>
+      <div className="auth-bottom"><Icon name="shield" size={15} />{t(" Không gian quản lý dành cho đội ngũ của bạn")}</div>
+      </section>
     </div>
   )
 }

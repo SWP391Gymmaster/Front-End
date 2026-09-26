@@ -1,3 +1,4 @@
+import { usePreferences } from '../../preferences/context'
 import { useState } from 'react'
 import Invoice from '../../components/Invoice'
 import Modal from '../../components/Modal'
@@ -7,6 +8,7 @@ import { addDays, formatDate, formatMoney, getMembershipStatus, todayISO } from 
 const METHODS = ['Chuyển khoản QR', 'Thẻ ngân hàng', 'Ví MoMo']
 
 export default function BuyPackage({ goTo }) {
+  const { t } = usePreferences()
   const { packages, memberships, currentUser, purchase } = useStore()
   const status = getMembershipStatus(currentUser.id, memberships)
   const [selected, setSelected] = useState(null)
@@ -34,26 +36,22 @@ export default function BuyPackage({ goTo }) {
   return (
     <div className="stack">
       {status.status === 'none' && (
-        <div className="alert alert-info">
-          👋 Chào mừng <strong>{currentUser.name}</strong>! Tài khoản đã được tạo. Hãy chọn một gói tập để bắt đầu.
-        </div>
+        <div className="alert alert-info">{t("👋 Chào mừng ")}<strong>{currentUser.name}</strong>{t("! Tài khoản đã được tạo. Hãy chọn một gói tập để bắt đầu.")}</div>
       )}
       {status.status === 'active' && (
-        <div className="alert alert-info">
-          Gói hiện tại còn hạn đến <strong>{formatDate(status.membership.endDate)}</strong>. Mua thêm sẽ được cộng nối tiếp (gia hạn).
-        </div>
+        <div className="alert alert-info">{t("Gói hiện tại còn hạn đến ")}<strong>{formatDate(status.membership.endDate)}</strong>{t(". Mua thêm sẽ được cộng nối tiếp (gia hạn).")}</div>
       )}
 
       <div className="grid-cards">
         {packages.filter((p) => p.active).map((p, i) => (
           <div key={p.id} className={'pkg-card' + (i === 1 ? ' featured' : '')}>
-            {i === 1 && <div className="ribbon">Phổ biến</div>}
+            {i === 1 && <div className="ribbon">{t("Phổ biến")}</div>}
             <h3>{p.name}</h3>
             <div className="pkg-price">{formatMoney(p.price)}</div>
-            <div className="muted small">{p.days} ngày · ~{formatMoney(Math.round(p.price / p.days))}/ngày</div>
+            <div className="muted small">{p.days}{t(" ngày · ~")}{formatMoney(Math.round(p.price / p.days))}{t("/ngày")}</div>
             <p>{p.description}</p>
             <button className="btn btn-primary full" onClick={() => open(p)}>
-              {status.status === 'active' ? 'Gia hạn gói này' : 'Chọn gói này'}
+              {t(status.status === 'active' ? 'Gia hạn gói này' : 'Chọn gói này')}
             </button>
           </div>
         ))}
@@ -64,17 +62,17 @@ export default function BuyPackage({ goTo }) {
           {step !== 'done' && (
             <div className="form">
               <div className="summary">
-                <div><span>Gói tập</span><strong>{selected.name}</strong></div>
-                <div><span>Hiệu lực</span><strong>{formatDate(startDate)} → {formatDate(addDays(startDate, selected.days - 1))}</strong></div>
-                <div className="total"><span>Tổng tiền</span><strong>{formatMoney(selected.price)}</strong></div>
+                <div><span>{t("Gói tập")}</span><strong>{selected.name}</strong></div>
+                <div><span>{t("Hiệu lực")}</span><strong>{formatDate(startDate)} → {formatDate(addDays(startDate, selected.days - 1))}</strong></div>
+                <div className="total"><span>{t("Tổng tiền")}</span><strong>{formatMoney(selected.price)}</strong></div>
               </div>
               <div className="field">
-                <span>Phương thức thanh toán</span>
+                <span>{t("Phương thức thanh toán")}</span>
                 <div className="methods">
                   {METHODS.map((m) => (
                     <label key={m} className={'method' + (method === m ? ' on' : '')}>
                       <input type="radio" name="method" checked={method === m} onChange={() => setMethod(m)} />
-                      {m}
+                      {t(m)}
                     </label>
                   ))}
                 </div>
@@ -82,13 +80,13 @@ export default function BuyPackage({ goTo }) {
               {method === 'Chuyển khoản QR' && (
                 <div className="qr-box">
                   <div className="qr" aria-hidden="true" />
-                  <div className="small muted">Quét mã để thanh toán (mô phỏng)<br />Nội dung: GYM {currentUser.phone}</div>
+                  <div className="small muted">{t("Quét mã để thanh toán (mô phỏng)")}<br />{t("Nội dung: GYM ")}{currentUser.phone}</div>
                 </div>
               )}
               <div className="form-actions">
-                <button className="btn btn-ghost" onClick={() => setSelected(null)} disabled={step === 'processing'}>Hủy</button>
+                <button className="btn btn-ghost" onClick={() => setSelected(null)} disabled={step === 'processing'}>{t("Hủy")}</button>
                 <button className="btn btn-primary" onClick={pay} disabled={step === 'processing'}>
-                  {step === 'processing' ? 'Đang xử lý...' : `Thanh toán ${formatMoney(selected.price)}`}
+                  {t(step === 'processing' ? 'Đang xử lý...' : `Thanh toán ${formatMoney(selected.price)}`)}
                 </button>
               </div>
             </div>
@@ -97,11 +95,11 @@ export default function BuyPackage({ goTo }) {
           {step === 'done' && result && (
             <div className="stack">
               <div className="success-mark">✔</div>
-              <p className="center">Gói <strong>{selected.name}</strong> đã được kích hoạt.</p>
+              <p className="center">{t("Gói ")}<strong>{selected.name}</strong>{t(" đã được kích hoạt.")}</p>
               <Invoice payment={result.payment} membership={result.membership} />
               <div className="form-actions">
-                <button className="btn btn-ghost" onClick={() => window.print()}>In hóa đơn</button>
-                <button className="btn btn-primary" onClick={() => goTo('home')}>Về trang của tôi</button>
+                <button className="btn btn-ghost" onClick={() => window.print()}>{t("In hóa đơn")}</button>
+                <button className="btn btn-primary" onClick={() => goTo('home')}>{t("Về trang của tôi")}</button>
               </div>
             </div>
           )}

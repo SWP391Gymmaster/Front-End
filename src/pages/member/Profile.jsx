@@ -1,7 +1,9 @@
+import { usePreferences } from '../../preferences/context'
 import { useState } from 'react'
 import { useStore } from '../../store/context'
 
 export default function Profile() {
+  const { t } = usePreferences()
   const { currentUser, updateProfile } = useStore()
   const [form, setForm] = useState({
     name: currentUser.name,
@@ -20,25 +22,21 @@ export default function Profile() {
 
   return (
     <div className="card narrow">
-      <div className="card-head"><h3>Thông tin cá nhân</h3></div>
+      <div className="card-head"><h3>{t("Thông tin cá nhân")}</h3></div>
       <form className="form" onSubmit={submit}>
-        <label>Email<input value={currentUser.email} disabled /></label>
-        <label>Họ và tên<input value={form.name} onChange={set('name')} required /></label>
-        <label>Số điện thoại<input value={form.phone} onChange={set('phone')} required /></label>
+        <label>{t("Email")}<input value={currentUser.email} disabled /></label>
+        <label>{t("Họ và tên")}<input value={form.name} onChange={set('name')} required /></label>
+        <label>{t("Số điện thoại")}<input value={form.phone} onChange={set('phone')} required /></label>
         <div className="row-2">
-          <label>
-            Giới tính
-            <select value={form.gender} onChange={set('gender')}><option>Nam</option><option>Nữ</option><option>Khác</option></select>
+          <label>{t("Giới tính")}<select value={form.gender} onChange={set('gender')}><option value="Nam">{t("Nam")}</option><option value="Nữ">{t("Nữ")}</option><option value="Khác">{t("Khác")}</option></select>
           </label>
-          <label>
-            Mục tiêu
-            <select value={form.goal} onChange={set('goal')}>
-              <option>Giảm cân</option><option>Tăng cơ</option><option>Giữ dáng</option><option>Cải thiện sức khỏe</option>
+          <label>{t("Mục tiêu")}<select value={form.goal} onChange={set('goal')}>
+              <option value="Giảm cân">{t("Giảm cân")}</option><option value="Tăng cơ">{t("Tăng cơ")}</option><option value="Giữ dáng">{t("Giữ dáng")}</option><option value="Cải thiện sức khỏe">{t("Cải thiện sức khỏe")}</option>
             </select>
           </label>
         </div>
-        {saved && <div className="alert alert-success">✔ Đã cập nhật thông tin</div>}
-        <button className="btn btn-primary" type="submit">Lưu thay đổi</button>
+        {saved && <div className="alert alert-success">{t("✔ Đã cập nhật thông tin")}</div>}
+        <button className="btn btn-primary" type="submit">{t("Lưu thay đổi")}</button>
       </form>
     </div>
   )
