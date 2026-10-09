@@ -1,8 +1,7 @@
 import { useStore } from '../../store/context'
 
 export default function Profile() {
-  const { session, members } = useStore()
-  const profile = members.find((m) => m.email === session.email)
+  const { session } = useStore()
 
   return (
     <div className="card narrow">
@@ -10,10 +9,10 @@ export default function Profile() {
       <div className="form">
         <label>Họ và tên<input value={session.name} disabled /></label>
         <label>Email<input value={session.email} disabled /></label>
-        <label>Số điện thoại<input value={profile?.phone || ''} disabled /></label>
+        <label>Mã hội viên<input value={'#' + session.userId} disabled /></label>
         <div className="alert alert-info">
-          Back-End chưa có API cập nhật thông tin cá nhân, nên hiện chỉ xem được. Khi có API
-          (ví dụ <code>PUT /api/users/me</code>) sẽ mở chức năng sửa.
+          Back-End chưa có API xem và cập nhật thông tin cá nhân, nên hiện chỉ xem được. Khi có API
+          (ví dụ <code>GET/PUT /api/users/me</code>) sẽ mở chức năng sửa.
         </div>
       </div>
     </div>
