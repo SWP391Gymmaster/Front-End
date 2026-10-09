@@ -34,6 +34,7 @@ const buildSessions = (f) => {
 }
 
 const overlaps = (a, b) => a.startTime < b.endTime && b.startTime < a.endTime
+const sameId = (a, b) => String(a) === String(b)
 
 export default function Classes() {
   const { data, loading, error, reload } = useApi(() =>
@@ -51,9 +52,9 @@ export default function Classes() {
   const rooms = data?.rooms || []
   const coaches = data?.coaches || []
 
-  const roomName = (id) => rooms.find((r) => r.id === id)?.name || '—'
-  const coachName = (id) => coaches.find((c) => c.id === id)?.fullName || '—'
-  const className = (id) => classes.find((c) => c.id === id)?.name || '—'
+  const roomName = (id) => rooms.find((r) => sameId(r.id, id))?.name || '—'
+  const coachName = (id) => coaches.find((c) => sameId(c.id, id))?.fullName || '—'
+  const className = (id) => classes.find((c) => sameId(c.id, id))?.name || '—'
 
   const sessions = form ? buildSessions(form) : []
   const timeInvalid = form && form.start >= form.end
@@ -64,12 +65,12 @@ export default function Classes() {
     sessions.forEach((s) =>
       schedules.forEach((ex) => {
         if (!overlaps(s, ex)) return
-        if (ex.coachId === coachIdNum) conflicts.push({ type: 'coach', s, ex })
-        if (ex.roomId === roomIdNum) conflicts.push({ type: 'room', s, ex })
+        if (sameId(ex.coachId, coachIdNum)) conflicts.push({ type: 'coach', s, ex })
+        if (sameId(ex.roomId, roomIdNum)) conflicts.push({ type: 'room', s, ex })
       }),
     )
   }
-  const coachBusy = (id) => sessions.some((s) => schedules.some((ex) => ex.coachId === id && overlaps(s, ex)))
+  const coachBusy = (id) => sessions.some((s) => schedules.some((ex) => sameId(ex.coachId, id) && overlaps(s, ex)))
   const room = rooms.find((r) => r.id === roomIdNum)
   const overCapacity = room && Number(form.capacity) > room.capacity
   const ready = form && form.name && form.roomId && form.coachId && sessions.length > 0 && !timeInvalid
@@ -102,20 +103,36 @@ export default function Classes() {
           throw new Error(`Buổi ${formatDate(s.startTime)} ${formatTime(s.startTime)}: ${err.message}`, { cause: err })
         }
       }
-      setNotice(`Đã tạo lớp "${form.name}" (${sessions.length} buổi) và phân công Coach ${coachName(coachIdNum)}`)
+      setNotice(`Đã tạo lớp "${form.name}" (${createdSchedules.length} buổi) và phân công Coach ${coachName(coachIdNum)}`)
       setForm(null)
-      reload()
+      await reload()
     } catch (err) {
-      for (const sc of createdSchedules) await scheduleApi.remove(sc.id).catch(() => {})
-      if (created) await classApi.remove(created.id).catch(() => {})
-      setFormError(err.message)
+      const cleanupErrors = []
+      for (const sc of createdSchedules) {
+        try {
+          await scheduleApi.remove(sc.id)
+        } catch (cleanupError) {
+          cleanupErrors.push(`Không thể xóa buổi ${sc.id}: ${cleanupError.message}`)
+        }
+      }
+      if (created && cleanupErrors.length === 0) {
+        try {
+          await classApi.remove(created.id)
+        } catch (cleanupError) {
+          cleanupErrors.push(`Lớp "${created.name}" đã được tạo nhưng không thể hoàn tác: ${cleanupError.message}`)
+        }
+      }
+      setFormError(cleanupErrors.length
+        ? `${err.message}. ${cleanupErrors.join('. ')} Tải lại danh sách để kiểm tra dữ liệu đã lưu.`
+        : err.message)
+      await reload()
     } finally {
       setSaving(false)
     }
   }
 
   const removeClass = async (c) => {
-    const own = schedules.filter((s) => s.classId === c.id)
+    const own = schedules.filter((s) => sameId(s.classId, c.id))
     if (!confirm(`Xóa lớp "${c.name}" và ${own.length} buổi học?`)) return
     try {
       for (const s of own) await scheduleApi.remove(s.id)
@@ -129,9 +146,9 @@ export default function Classes() {
   }
 
   const summary = (c) => {
-    const own = schedules.filter((s) => s.classId === c.id).sort((a, b) => a.startTime.localeCompare(b.startTime))
+    const own = schedules.filter((s) => sameId(s.classId, c.id)).sort((a, b) => a.startTime.localeCompare(b.startTime))
     const days = DAYS.filter((d) => own.some((s) => dayOf(s.startTime) === d))
-    const upcoming = own.find((s) => s.startTime.slice(0, 10) >= todayISO())
+    const upcoming = own.find((s) => s.startTime > new Date().toISOString())
     return {
       count: own.length,
       rooms: [...new Set(own.map((s) => roomName(s.roomId)))].join(', ') || '—',
@@ -141,7 +158,7 @@ export default function Classes() {
   }
 
   const items = schedules.map((s) => {
-    const c = classes.find((x) => x.id === s.classId)
+    const c = classes.find((x) => sameId(x.id, s.classId))
     return {
       id: s.id,
       startTime: s.startTime,

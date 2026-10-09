@@ -237,5 +237,28 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .tt-day span { display: block; font-weight: 500; color: var(--muted); font-size: 11.5px; }
 .tt-day.today { background: var(--primary); color: #fff; }
 .tt-day.today span { color: rgba(255,255,255,.85); }
+.session-list { display: flex; flex-direction: column; gap: 10px; }
+.session-card { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.session-main { min-width: 0; display: flex; align-items: center; gap: 20px; }
+.session-date { min-width: 104px; display: flex; flex-direction: column; gap: 5px; }
+.session-date span { color: var(--muted); font-size: 12.5px; }
+.session-info { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+.session-info p { margin: 0; }
+.session-title { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.session-title h3 { font-size: 15px; }
+.schedule-tabs { margin-top: 16px; }
+.class-search { max-width: 560px; }
+.class-booking-card { display: flex; flex-direction: column; gap: 16px; }
+.class-booking-summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.class-booking-summary p { margin: 8px 0 0; }
+.class-booking-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; color: var(--muted); font-size: 12.5px; }
+.class-session-options { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+.class-session-option { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.class-session-option:last-child { border-bottom: 0; padding-bottom: 0; }
+.table-scroll { width: 100%; overflow-x: auto; }
 code { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 @media (max-width: 900px) { .row-4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) {
+  .class-booking-summary, .class-session-option { align-items: stretch; flex-direction: column; }
+  .class-booking-meta { align-items: flex-start; }
+}

@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import Invoice from '../../components/Invoice'
-import { ErrorBox, Loading, MockBadge } from '../../components/Status'
-import { authApi, packageApi } from '../../api/services'
+import { ErrorBox, Loading } from '../../components/Status'
+import { authApi, packageApi, paymentApi } from '../../api/services'
 import useApi from '../../api/useApi'
 import { useStore } from '../../store/context'
-import { addDays, formatDate, formatMoney, todayISO } from '../../store/utils'
+import { formatMoney } from '../../store/utils'
 
 const DEFAULT_PASSWORD = '12345678'
-const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '', method: 'Tiền mặt' }
+const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '' }
 
 export default function CounterRegister() {
-  const { session, addMember, purchase } = useStore()
+  const { addMember } = useStore()
   const { data: packages, loading, error: loadError, reload } = useApi(() => packageApi.list())
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState(null)
+  const [pendingMember, setPendingMember] = useState(null)
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const [userNameTouched, setUserNameTouched] = useState(false)
@@ -34,19 +35,36 @@ export default function CounterRegister() {
     if (!pkg) return setError('Vui lòng chọn gói tập')
     setError('')
     setSaving(true)
+    let memberCreated = Boolean(pendingMember)
     try {
-      await authApi.register({
-        userName: form.userName,
-        fullName: form.fullName,
-        email: form.email.trim(),
-        phone: form.phone,
-        password: DEFAULT_PASSWORD,
+      let member = pendingMember
+      if (!member) {
+        member = await authApi.register({
+          userName: form.userName,
+          fullName: form.fullName,
+          email: form.email.trim(),
+          phone: form.phone,
+          password: DEFAULT_PASSWORD,
+        })
+        memberCreated = true
+        setPendingMember(member)
+        addMember({
+          userId: member.userId,
+          email: form.email.trim(),
+          fullName: form.fullName,
+          phone: form.phone,
+        })
+      }
+      const payment = await paymentApi.cashCheckout({
+        memberId: member.userId,
+        packageId: pkg.id,
+        note: `Thu tiền tại quầy cho gói ${pkg.name}`,
       })
-      addMember({ email: form.email.trim(), fullName: form.fullName, phone: form.phone })
-      const res = purchase({ email: form.email.trim(), pkg, method: form.method, channel: 'Tại quầy', staffName: session.name })
-      setResult({ ...res, email: form.email.trim() })
+      setResult(payment)
     } catch (err) {
-      setError(err.message)
+      setError(memberCreated
+        ? `Tài khoản hội viên đã được tạo nhưng chưa thu tiền thành công. ${err.message} Vui lòng thử thu tiền lại.`
+        : err.message)
     } finally {
       setSaving(false)
     }
@@ -58,12 +76,12 @@ export default function CounterRegister() {
         <div className="success-mark">✔</div>
         <h3 className="center">Đăng ký hội viên thành công</h3>
         <p className="center muted">
-          Tài khoản đăng nhập: <strong>{result.email}</strong> · mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>
+          Tài khoản đăng nhập: <strong>{form.email}</strong> · mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>
         </p>
-        <Invoice payment={result.payment} />
+        <Invoice payment={result} />
         <div className="form-actions">
           <button className="btn btn-ghost" onClick={() => window.print()}>In hóa đơn</button>
-          <button className="btn btn-primary" onClick={() => { setResult(null); setForm(EMPTY); setUserNameTouched(false) }}>Đăng ký hội viên khác</button>
+          <button className="btn btn-primary" onClick={() => { setResult(null); setPendingMember(null); setForm(EMPTY); setUserNameTouched(false) }}>Đăng ký hội viên khác</button>
         </div>
       </div>
     )
@@ -74,14 +92,14 @@ export default function CounterRegister() {
       <div className="card">
         <div className="card-head"><h3>Thông tin hội viên mới</h3></div>
         <form className="form" onSubmit={submit} id="counter-form">
-          <label>Họ và tên<input value={form.fullName} onChange={set('fullName')} required /></label>
+          <label>Họ và tên<input value={form.fullName} onChange={set('fullName')} required disabled={Boolean(pendingMember)} /></label>
           <div className="row-2">
-            <label>Email<input type="email" value={form.email} onChange={setEmail} required /></label>
-            <label>Số điện thoại<input value={form.phone} onChange={set('phone')} required placeholder="09xxxxxxxx" /></label>
+            <label>Email<input type="email" value={form.email} onChange={setEmail} required disabled={Boolean(pendingMember)} /></label>
+            <label>Số điện thoại<input value={form.phone} onChange={set('phone')} required placeholder="09xxxxxxxx" disabled={Boolean(pendingMember)} /></label>
           </div>
           <label>
             Tên đăng nhập
-            <input value={form.userName} onChange={(e) => { setUserNameTouched(true); set('userName')(e) }} required />
+            <input value={form.userName} onChange={(e) => { setUserNameTouched(true); set('userName')(e) }} required disabled={Boolean(pendingMember)} />
           </label>
           <div className="field">
             <span>Chọn gói tập</span>
@@ -90,35 +108,32 @@ export default function CounterRegister() {
             <div className="pkg-pick">
               {active.map((p) => (
                 <label key={p.id} className={'method' + (form.packageId === String(p.id) ? ' on' : '')}>
-                  <input type="radio" name="pkg" checked={form.packageId === String(p.id)} onChange={() => setForm({ ...form, packageId: String(p.id) })} />
+                  <input type="radio" name="pkg" checked={form.packageId === String(p.id)} onChange={() => setForm({ ...form, packageId: String(p.id) })} disabled={Boolean(pendingMember)} />
                   <span><strong>{p.name}</strong><br /><span className="small muted">{formatMoney(p.price)} · {p.durationDays} ngày</span></span>
                 </label>
               ))}
             </div>
           </div>
-          <label>
-            Hình thức thanh toán
-            <select value={form.method} onChange={set('method')}><option>Tiền mặt</option><option>Chuyển khoản</option><option>Quẹt thẻ</option></select>
-          </label>
+          <div className="alert alert-info small">Thanh toán tại quầy bằng tiền mặt. Gói chỉ được kích hoạt sau khi giao dịch được hệ thống xác nhận.</div>
           {error && <div className="alert alert-error">{error}</div>}
         </form>
       </div>
 
       <div className="card sticky">
-        <div className="card-head"><h3>Tóm tắt <MockBadge /></h3></div>
+        <div className="card-head"><h3>Tóm tắt</h3></div>
         {pkg ? (
           <div className="summary">
-            <div><span>Gói</span><strong>{pkg.name}</strong></div>
-            <div><span>Hiệu lực</span><strong>{formatDate(todayISO())} → {formatDate(addDays(todayISO(), pkg.durationDays - 1))}</strong></div>
-            <div><span>Thanh toán</span><strong>{form.method}</strong></div>
-            <div className="total"><span>Tổng tiền</span><strong>{formatMoney(pkg.price)}</strong></div>
+          <div><span>Gói</span><strong>{pkg.name}</strong></div>
+          <div><span>Thời hạn</span><strong>{pkg.durationDays} ngày</strong></div>
+          <div><span>Thanh toán</span><strong>Tiền mặt tại quầy</strong></div>
+          <div className="total"><span>Tổng tiền</span><strong>{formatMoney(pkg.price)}</strong></div>
           </div>
         ) : (
           <p className="muted">Chọn gói tập để xem tổng tiền.</p>
         )}
-        <p className="small muted">Tài khoản hội viên được tạo thật trên hệ thống. Phần thanh toán đang lưu tạm.</p>
+        <p className="small muted">Tài khoản, khoản thu và hóa đơn được ghi nhận trên hệ thống.</p>
         <button className="btn btn-primary full" type="submit" form="counter-form" disabled={saving}>
-          {saving ? 'Đang xử lý...' : 'Xác nhận thu tiền & đăng ký'}
+          {saving ? 'Đang xử lý...' : pendingMember ? 'Thử thu tiền lại' : 'Xác nhận thu tiền & đăng ký'}
         </button>
       </div>
     </div>

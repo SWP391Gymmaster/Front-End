@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import Layout from './components/Layout'
 import { useStore } from './store/context'
-import { getMembershipStatus } from './store/utils'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ManagerDashboard from './pages/manager/Dashboard'
@@ -59,15 +58,9 @@ function AuthScreens() {
 }
 
 export default function App() {
-  const { session, memberships } = useStore()
+  const { session } = useStore()
 
   if (!session) return <AuthScreens />
 
-  let initialPage = MENUS[session.role][0].key
-  // Member chưa có gói: đưa thẳng tới trang chọn gói
-  if (session.role === 'member' && getMembershipStatus(session.email, memberships).status === 'none') {
-    initialPage = 'buy'
-  }
-
-  return <RoleApp key={session.email} role={session.role} initialPage={initialPage} />
+  return <RoleApp key={session.email} role={session.role} initialPage={MENUS[session.role][0].key} />
 }
