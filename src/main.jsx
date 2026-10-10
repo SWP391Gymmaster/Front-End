@@ -3,11 +3,13 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import StoreProvider from './store/StoreProvider.jsx'
+import PreferencesProvider from './preferences/PreferencesProvider.jsx'
+import './member.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <StoreProvider>
+    <PreferencesProvider><StoreProvider>
       <App />
-    </StoreProvider>
+    </StoreProvider></PreferencesProvider>
   </StrictMode>,
 )

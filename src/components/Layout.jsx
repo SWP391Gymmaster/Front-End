@@ -1,8 +1,11 @@
 import { useStore } from '../store/context'
 import { ROLE_LABELS } from '../store/roles'
+import Avatar from './Avatar'
+import { usePreferences } from '../preferences/context'
 
 export default function Layout({ menu, page, setPage, children }) {
-  const { session, logout } = useStore()
+  const { session, logout, currentUser } = useStore()
+  const { t } = usePreferences()
   const current = menu.find((m) => m.key === page)
 
   return (
@@ -20,13 +23,13 @@ export default function Layout({ menu, page, setPage, children }) {
               onClick={() => setPage(m.key)}
             >
               <span className="nav-icon">{m.icon}</span>
-              {m.label}
+              {session.role === 'member' ? t(m.label) : m.label}
             </button>
           ))}
         </nav>
         <div className="sidebar-foot">
           <div className="user-chip">
-            <div className="avatar">{(session.name || '?').trim().split(' ').pop()[0]}</div>
+            <Avatar name={session.name} src={currentUser?.avatarUrl} />
             <div>
               <div className="user-name">{session.name}</div>
               <div className="user-role">{ROLE_LABELS[session.role]}</div>

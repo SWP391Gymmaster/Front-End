@@ -47,12 +47,19 @@ export default function StoreProvider({ children }) {
     },
 
     async register({ userName, fullName, email, phone, password }) {
-      return startSession(await authApi.register({ userName, fullName, email: email.trim(), phone, password }))
+      const s = startSession(await authApi.register({ userName, fullName, email: email.trim(), phone, password }))
+      setSession({ ...s, newMember: true })
+      return s
     },
 
     logout() {
       sessionStore.clear()
       setSession(null)
+    },
+    expireSession() {
+      sessionStore.clear()
+      setSession(null)
+      setNotice('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại')
     },
   }
 

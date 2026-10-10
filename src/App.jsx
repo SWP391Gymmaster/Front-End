@@ -18,6 +18,8 @@ import Payments from './pages/receptionist/Payments'
 import Invoices from './pages/receptionist/Invoices'
 import CoachDashboard from './pages/coach/CoachDashboard'
 import CoachSchedule from './pages/coach/CoachSchedule'
+import MemberProvider from './store/MemberProvider'
+import MemberPayments from './pages/Payments'
 
 const MENUS = {
   manager: [
@@ -40,13 +42,14 @@ const MENUS = {
   member: [
     { key: 'home', label: 'Trang của tôi', icon: '🏠', el: MemberHome },
     { key: 'buy', label: 'Gói tập', icon: '🎫', el: BuyPackage },
+    { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: MemberPayments },
     { key: 'schedule', label: 'Đặt lớp & Lịch tập', icon: '📅', el: MemberSchedule },
     { key: 'profile', label: 'Hồ sơ', icon: '👤', el: Profile },
   ],
 }
 
-function RoleApp({ role }) {
-  const [page, setPage] = useState(MENUS[role][0].key)
+function RoleApp({ role, newMember }) {
+  const [page, setPage] = useState(role === 'member' && newMember ? 'buy' : MENUS[role][0].key)
   const menu = MENUS[role]
   const Page = (menu.find((m) => m.key === page) || menu[0]).el
   return (
@@ -68,5 +71,8 @@ function AuthScreens() {
 export default function App() {
   const { session } = useStore()
   if (!session) return <AuthScreens />
-  return <RoleApp key={session.email} role={session.role} />
+  const content = <RoleApp key={session.email} role={session.role} newMember={session.newMember} />
+  return session.role === 'member'
+    ? <MemberProvider key={session.token}>{content}</MemberProvider>
+    : content
 }

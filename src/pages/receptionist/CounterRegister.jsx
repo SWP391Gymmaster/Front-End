@@ -21,12 +21,6 @@ export default function CounterRegister() {
   const active = (packages || []).filter((p) => p.active !== false)
   const pkg = active.find((p) => String(p.id) === form.packageId)
 
-  const getInvoice = async (memberId) => {
-  const payment = await paymentApi.cashCheckout({ memberId, packageId: pkg.id, note: form.note || undefined })
-  const invoice = await invoiceApi.get(payment.invoiceId)
-  setResult({ payment: { ...payment, paymentMethod: form.method }, invoice })
-}
-
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const setEmail = (e) => {
     const email = e.target.value

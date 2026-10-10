@@ -1,109 +1,120 @@
-import { useState } from 'react'
-import InvoiceModal from '../../components/InvoiceModal'
-import { ErrorBox, Loading } from '../../components/Status'
-import { memberPaymentApi } from '../../api/services'
-import useApi from '../../api/useApi'
-import { useStore } from '../../store/context'
-import { formatDate, formatDateTime, formatMoney, PAYMENT_METHOD, PAYMENT_STATUS, todayISO } from '../../store/utils'
+import { usePreferences } from '../../preferences/context'
+import { useMemberPortal } from '../../services/useMemberPortal'
+import MemberDataState from '../../components/MemberDataState'
+import MembershipNotice from '../../components/MembershipNotice'
+import Icon from '../../components/Icon'
+import { formatDate } from '../../store/utils'
 
 export default function MemberHome({ goTo }) {
-  const { session } = useStore()
-  const { data, loading, error, reload } = useApi(() =>
-    Promise.all([memberPaymentApi.memberships(), memberPaymentApi.payments()]).then(([memberships, payments]) => ({ memberships, payments })),
-  )
-  const [viewing, setViewing] = useState(null)
-  const [paying, setPaying] = useState(null)
-  const [payError, setPayError] = useState('')
+  const { t } = usePreferences()
+  const { data, error, retry } = useMemberPortal()
 
-  if (loading && !data) return <Loading />
+  if (!data || error) {
+    return <MemberDataState error={error} retry={retry} />
+  }
 
-  const today = todayISO()
-  const memberships = data?.memberships || []
-  const current = memberships.find((m) => m.active)
-  const upcoming = memberships.filter((m) => m.startDate > today).sort((a, b) => a.startDate.localeCompare(b.startDate))
-  const lastEnd = memberships.map((m) => m.endDate).sort().pop()
-  const status = current ? 'active' : lastEnd ? 'expired' : 'none'
-  const label = { active: 'Đang hoạt động', expired: 'Hết hạn', none: 'Chưa có gói' }[status]
-  const payments = data?.payments || []
+  const { user, enrollments, status, memberships } = data
+  const upcoming = [...enrollments]
+    .filter((e) => new Date(e.session.endTime) > new Date())
+    .sort((a, b) => a.session.startTime.localeCompare(b.session.startTime))
 
-  const payPending = async (p) => {
-    setPaying(p.paymentId)
-    setPayError('')
-    try {
-      await memberPaymentApi.simulatePay(p.paymentId)
-      reload()
-    } catch (err) {
-      setPayError(err.message)
-    } finally {
-      setPaying(null)
-    }
+  const getMembershipBadgeText = (membership) => {
+    if (membership.active) return t('Đang có hiệu lực')
+    const today = new Date().toLocaleDateString('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+    })
+    return t(membership.startDate > today ? 'Chưa có hiệu lực' : 'Đã hết hạn')
   }
 
   return (
     <div className="stack">
-      <ErrorBox error={error} onRetry={reload} />
-      <div className={'membership-card status-' + status}>
+      <div className="membership-card">
         <div>
-          <div className="muted small">Thẻ hội viên</div>
-          <h2>{session.name}</h2>
-          <div className="small">{session.email} · Mã hội viên #{session.userId}</div>
+          <div className="muted small">{t('Hội viên')}</div>
+          <h2>{user.name}</h2>
+          <div className="small">{user.email}</div>
         </div>
+
         <div className="right">
-          <span className="badge">{label}</span>
-          {current && <div className="mc-pkg">{current.packageName}</div>}
-          {current && <div className="small">Hết hạn {formatDate(current.endDate)} · còn {current.daysRemaining} ngày</div>}
-          {!current && lastEnd && <div className="small">Hết hạn từ {formatDate(lastEnd)}</div>}
-          {upcoming.length > 0 && (
-            <div className="small">Gói kế tiếp: {upcoming[0].packageName} từ {formatDate(upcoming[0].startDate)}</div>
+          <span className="badge">{t('Lịch của tôi')}</span>
+          <strong>
+            {upcoming.length} {t('Buổi học sắp tới')}
+          </strong>
+        </div>
+      </div>
+
+      <MembershipNotice status={status} />
+
+      <div className="two-col wide-left">
+        <section className="card">
+          <div className="toolbar card-head">
+            <h3>{t('Buổi học sắp tới')}</h3>
+            <button className="link small" onClick={() => goTo('schedule')}>
+              {t('Xem tất cả')} →
+            </button>
+          </div>
+
+          {!upcoming.length ? (
+            <div className="member-empty">
+              <Icon name="calendar" size={32} />
+              <p>{t('Bạn chưa có buổi học nào sắp tới.')}</p>
+              <button className="btn" onClick={() => goTo('schedule')}>
+                {t('Khám phá buổi học')}
+              </button>
+            </div>
+          ) : (
+            upcoming.slice(0, 3).map(({ id, session }) => (
+              <div className="upcoming-row" key={id}>
+                <div className="session-date">
+                  <strong>{session.date.slice(8)}</strong>
+                  <span>
+                    {session.date.slice(5, 7)} / {session.date.slice(0, 4)}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>{session.name}</strong>
+                  <p>
+                    {session.time} · {session.roomName}
+                  </p>
+                  <span className="small muted">{session.coachName}</span>
+                </div>
+              </div>
+            ))
           )}
-        </div>
+        </section>
+
+        <section className="card stack">
+          <h3>{t('Gói tập của tôi')}</h3>
+
+          {!memberships.length && (
+            <p className="muted small">{t('Bạn chưa có gói tập đã kích hoạt.')}</p>
+          )}
+          {/* Hiển thị danh sách các gói tập của người dùng */}
+          {memberships.map((membership) => (
+            <div className="summary" key={membership.id}>
+              <h4>{membership.packageName}</h4>
+              <p>
+                {formatDate(membership.startDate)} – {formatDate(membership.endDate)}
+              </p>
+              <span className="badge">{getMembershipBadgeText(membership)}</span>
+
+              {membership.active && (
+                <p>
+                  {membership.daysRemaining} {t('ngày còn lại')} · {t('Bao gồm hôm nay')}
+                </p>
+              )}
+            </div>
+          ))}
+
+          <button className="btn btn-primary" onClick={() => goTo('buy')}>
+            {t('Xem các gói tập')}
+          </button>
+          <button className="btn" onClick={() => goTo('payments')}>
+            {t('Thanh toán & Hóa đơn')}
+          </button>
+        </section>
       </div>
-
-      {status !== 'active' && (
-        <div className="alert alert-info">
-          Bạn chưa có gói tập đang hoạt động.{' '}
-          <button className="link" onClick={() => goTo('buy')}>Chọn gói ngay →</button>
-        </div>
-      )}
-
-      <div className="card">
-        <div className="card-head"><h3>Lịch sử thanh toán</h3></div>
-        {payError && <div className="alert alert-error">{payError}</div>}
-        {payments.length === 0 ? (
-          <p className="muted">Chưa có giao dịch.</p>
-        ) : (
-          <table className="table">
-            <thead><tr><th>Mã đơn</th><th>Gói</th><th>Hình thức</th><th>Thời điểm</th><th>Trạng thái</th><th className="right">Số tiền</th><th></th></tr></thead>
-            <tbody>
-              {payments.map((p) => {
-                const st = PAYMENT_STATUS[p.status] || { label: p.status, badge: 'badge-gray' }
-                return (
-                  <tr key={p.paymentId}>
-                    <td className="mono">{p.paymentCode}</td>
-                    <td>{p.packageName}</td>
-                    <td>{PAYMENT_METHOD[p.paymentMethod] || p.paymentMethod}</td>
-                    <td>{formatDateTime(p.completedAt || p.createdAt)}</td>
-                    <td><span className={'badge ' + st.badge}>{st.label}</span></td>
-                    <td className="right">{formatMoney(p.amount)}</td>
-                    <td className="right nowrap">
-                      {p.status === 'PENDING' && (
-                        <button className="btn btn-sm btn-primary" disabled={paying === p.paymentId} onClick={() => payPending(p)}>
-                          {paying === p.paymentId ? 'Đang xử lý...' : 'Thanh toán'}
-                        </button>
-                      )}{' '}
-                      <button className="btn btn-sm" onClick={() => setViewing(p)}>Hóa đơn</button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {viewing && (
-        <InvoiceModal invoiceId={viewing.invoiceId} payment={viewing} loadInvoice={memberPaymentApi.invoice} onClose={() => setViewing(null)} />
-      )}
     </div>
   )
 }
