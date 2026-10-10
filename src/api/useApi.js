@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react'
 export default function useApi(loader, deps = []) {
   const [state, setState] = useState({ data: null, loading: true, error: '' })
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(loader, deps)
 
   const reload = useCallback(async () => {

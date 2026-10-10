@@ -1,5 +1,5 @@
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+export const API_URL = import.meta.env.VITE_API_URL || '/backend'
 
 const SESSION_KEY = 'gm-session'
 
@@ -48,6 +48,23 @@ const MESSAGES = {
   'Cannot complete a cancelled payment': 'Không thể xác nhận khoản thanh toán đã hủy',
   'Member not found': 'Không tìm thấy hội viên',
   'User is not a member': 'Tài khoản không phải hội viên',
+  'Payment is already completed': 'Giao dịch này đã được thu rồi',
+  'Cannot complete a cancelled payment': 'Giao dịch đã hủy, không thể xác nhận',
+  'Cannot cancel an already completed payment': 'Giao dịch đã thu, không thể hủy',
+  'Payment not found': 'Không tìm thấy giao dịch',
+  'Invoice not found': 'Không tìm thấy hóa đơn',
+  'Member not found': 'Không tìm thấy hội viên',
+  'User is not a member': 'Tài khoản này không phải hội viên',
+  'Membership package not found': 'Không tìm thấy gói tập',
+  'Membership package is currently inactive': 'Gói tập đang tạm ngưng bán',
+  'You are not authorized to pay for this invoice': 'Bạn không có quyền thanh toán hóa đơn này',
+  'Membership package is expired or does not cover this class session':
+    'Gói tập đã hết hạn hoặc không còn hiệu lực vào ngày học này. Vui lòng mua hoặc gia hạn gói.',
+  'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này rồi',
+  'Class session is full': 'Buổi học đã đủ chỗ',
+  'Class session has already started': 'Buổi học đã bắt đầu, không thể đăng ký hoặc hủy',
+  'Schedule not found': 'Không tìm thấy buổi học',
+  'Enrollment not found': 'Bạn chưa đăng ký buổi học này',
 }
 
 const FIELD_NAMES = {
@@ -59,6 +76,9 @@ const FIELD_NAMES = {
   price: 'Học phí',
   durationDays: 'Thời hạn',
   capacity: 'Sức chứa',
+  memberId: 'Hội viên',
+  packageId: 'Gói tập',
+  paymentMethod: 'Phương thức thanh toán',
 }
 
 const translate = (data, status) => {

@@ -11,7 +11,7 @@ const DEMO_ACCOUNTS = [
 const DEMO_PASSWORD = 'password123'
 
 export default function Login({ onRegister }) {
-  const { login, notice, resetMock } = useStore()
+  const { login, notice } = useStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -80,9 +80,6 @@ export default function Login({ onRegister }) {
               </button>
             ))}
           </div>
-          <button type="button" className="link small" onClick={resetMock}>
-            Xóa dữ liệu tạm (gói đã mua, hóa đơn) để demo lại
-          </button>
         </div>
       </div>
     </div>

@@ -1,21 +1,9 @@
+﻿import { usePreferences } from '../../preferences/context'
 import { useStore } from '../../store/context'
+import AvatarEditor from '../../components/AvatarEditor'
 
 export default function Profile() {
-  const { session, members } = useStore()
-  const profile = members.find((m) => m.email === session.email)
-
-  return (
-    <div className="card narrow">
-      <div className="card-head"><h3>Thông tin cá nhân</h3></div>
-      <div className="form">
-        <label>Họ và tên<input value={session.name} disabled /></label>
-        <label>Email<input value={session.email} disabled /></label>
-        <label>Số điện thoại<input value={profile?.phone || ''} disabled /></label>
-        <div className="alert alert-info">
-          Back-End chưa có API cập nhật thông tin cá nhân, nên hiện chỉ xem được. Khi có API
-          (ví dụ <code>PUT /api/users/me</code>) sẽ mở chức năng sửa.
-        </div>
-      </div>
-    </div>
-  )
+  const { t } = usePreferences()
+  const { currentUser } = useStore()
+  return <div className="card narrow stack"><AvatarEditor key={currentUser.id} /><p className="small muted">{t('Ảnh được lưu trên Cloudinary; lựa chọn avatar chỉ lưu trên trình duyệt này.')}</p><h3>{t('Thông tin cá nhân')}</h3><div className="form"><label>{t('Họ và tên')}<input value={currentUser.name} readOnly /></label><label>Email<input value={currentUser.email} readOnly /></label></div><div className="alert alert-info">{t('Chưa hỗ trợ cập nhật hồ sơ trên máy chủ.')}</div></div>
 }
