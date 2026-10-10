@@ -38,6 +38,14 @@ export default function StoreProvider({ children }) {
     sessionStore.set(s)
     setSession(s)
     setNotice('')
+    if (s.role === 'member') {
+      upsertMember({
+        userId: s.userId,
+        email: s.email,
+        fullName: s.name,
+        ...(extra.phone ? { phone: extra.phone } : {}),
+      })
+    }
     return s
   }
 

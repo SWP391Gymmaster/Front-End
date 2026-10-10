@@ -68,6 +68,10 @@ function AuthScreens() {
 
 export default function App() {
   const { session } = useStore()
+
+  if (!session) return <AuthScreens />
+
+  return <RoleApp key={session.email} role={session.role} initialPage={MENUS[session.role][0].key} />
   if (!session) return <AuthScreens />
   const content = <RoleApp key={session.email} role={session.role} newMember={session.newMember} />
   return session.role === 'member'
