@@ -5,23 +5,27 @@ import { authApi, invoiceApi, packageApi, paymentApi } from '../../api/services'
 import useApi from '../../api/useApi'
 import { addDays, formatDate, formatMoney, printSection, todayISO } from '../../store/utils'
 
-// Mật khẩu mặc định cho hội viên đăng ký tại quầy (Back-End yêu cầu tối thiểu 8 ký tự)
 const DEFAULT_PASSWORD = '12345678'
-const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '', note: '' }
+const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '', note: '', method:'CASH' }
 const toUserName = (email) => email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '')
 
-// Luồng: (1) POST /auth/register  ->  (2) POST /api/payments/cash-checkout  ->  (3) hóa đơn
 export default function CounterRegister() {
   const { data: packages, loading, error: loadError, reload } = useApi(() => packageApi.list())
   const [form, setForm] = useState(EMPTY)
   const [userNameTouched, setUserNameTouched] = useState(false)
-  const [member, setMember] = useState(null) // tài khoản đã tạo ở bước 1
-  const [result, setResult] = useState(null) // { payment, invoice } sau bước 2
+  const [member, setMember] = useState(null) 
+  const [result, setResult] = useState(null) 
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const active = (packages || []).filter((p) => p.active !== false)
   const pkg = active.find((p) => String(p.id) === form.packageId)
+
+  const getInvoice = async (memberId) => {
+  const payment = await paymentApi.cashCheckout({ memberId, packageId: pkg.id, note: form.note || undefined })
+  const invoice = await invoiceApi.get(payment.invoiceId)
+  setResult({ payment: { ...payment, paymentMethod: form.method }, invoice })
+}
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const setEmail = (e) => {
@@ -29,7 +33,6 @@ export default function CounterRegister() {
     setForm({ ...form, email, userName: userNameTouched ? form.userName : toUserName(email) })
   }
 
-  // Bước 2: thu tiền mặt cho tài khoản đã có
   const checkout = async (memberId) => {
     const payment = await paymentApi.cashCheckout({ memberId, packageId: pkg.id, note: form.note || undefined })
     const invoice = await invoiceApi.get(payment.invoiceId)
@@ -49,7 +52,6 @@ export default function CounterRegister() {
     setSaving(true)
     let created = member
     try {
-      // Bước 1: tạo tài khoản (bỏ qua nếu đã tạo ở lần thử trước). Phiên đăng nhập của lễ tân giữ nguyên.
       if (!created) {
         const res = await authApi.register({
           userName: form.userName,
@@ -143,8 +145,11 @@ export default function CounterRegister() {
           <div className="row-2">
             <label>
               Hình thức thanh toán
-              <select disabled value="CASH"><option value="CASH">Tiền mặt</option></select>
-              <span className="small muted">Chuyển khoản / quẹt thẻ tại quầy: chờ Back-End (G2)</span>
+              <select value={form.method} onChange={set('method')}>
+                  <option value="CASH">Tiền mặt</option>
+                  <option value="BANK_TRANSFER">Chuyển khoản</option>
+                  <option value="CREDIT_CARD">Thẻ tín dụng</option>
+              </select>
             </label>
             <label>Ghi chú (không bắt buộc)<input value={form.note} onChange={set('note')} /></label>
           </div>
