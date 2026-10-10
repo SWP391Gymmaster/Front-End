@@ -6,8 +6,6 @@ import { invoiceApi, packageApi, paymentApi } from '../../api/services'
 import useApi from '../../api/useApi'
 import { completedPayments, formatDateTime, formatMoney, printSection, sumAmount } from '../../store/utils'
 
-// Back-End chưa có API danh sách hội viên (G1), nên danh sách này dựng từ các giao dịch đã thu.
-// Gia hạn gọi API thật: POST /api/payments/cash-checkout (Back-End tự cộng nối tiếp thời hạn).
 export default function MemberSearch() {
   const { data, loading, error, reload } = useApi(() =>
     Promise.all([paymentApi.list(), packageApi.list()]).then(([payments, packages]) => ({ payments, packages })),

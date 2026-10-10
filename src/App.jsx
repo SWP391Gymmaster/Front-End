@@ -15,7 +15,6 @@ import Profile from './pages/member/Profile'
 import MemberSearch from './pages/receptionist/MemberSearch'
 import CounterRegister from './pages/receptionist/CounterRegister'
 import Payments from './pages/receptionist/Payments'
-import Invoices from './pages/receptionist/Invoices'
 import CoachDashboard from './pages/coach/CoachDashboard'
 import CoachSchedule from './pages/coach/CoachSchedule'
 import MemberProvider from './store/MemberProvider'
@@ -32,7 +31,6 @@ const MENUS = {
   receptionist: [
     { key: 'counter', label: 'Đăng ký tại quầy', icon: '📝', el: CounterRegister },
     { key: 'payments', label: 'Thanh toán', icon: '💳', el: Payments },
-    { key: 'invoices', label: 'Hóa đơn', icon: '🧾', el: Invoices },
     { key: 'search', label: 'Hội viên & Gia hạn', icon: '🔎', el: MemberSearch },
   ],
   coach: [
