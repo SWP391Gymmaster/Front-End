@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import Layout from './components/Layout'
 import { useStore } from './store/context'
-import { getMembershipStatus } from './store/utils'
-import Login from './pages/Login'
-import Register from './pages/Register'
+import MemberDataState from './components/MemberDataState'
+import Unavailable from './components/Unavailable'
+import PublicApp from './pages/public/PublicApp'
 import ManagerDashboard from './pages/manager/Dashboard'
 import Packages from './pages/manager/Packages'
 import Rooms from './pages/manager/Rooms'
@@ -12,10 +12,8 @@ import MemberHome from './pages/member/MemberHome'
 import BuyPackage from './pages/member/BuyPackage'
 import MemberSchedule from './pages/member/MemberSchedule'
 import Profile from './pages/member/Profile'
-import MemberSearch from './pages/receptionist/MemberSearch'
-import CounterRegister from './pages/receptionist/CounterRegister'
-import Invoices from './pages/receptionist/Invoices'
 import CoachSchedule from './pages/coach/CoachSchedule'
+import Payments, { Invoices } from './pages/Payments'
 
 const MENUS = {
   manager: [
@@ -23,51 +21,45 @@ const MENUS = {
     { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: Packages },
     { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
     { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
+    { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
   ],
   receptionist: [
-    { key: 'counter', label: 'Đăng ký tại quầy', icon: '📝', el: CounterRegister },
-    { key: 'search', label: 'Tra cứu hội viên', icon: '🔎', el: MemberSearch },
+    { key: 'counter', label: 'Thanh toán tại quầy', icon: '📝', el: Payments },
+    { key: 'search', label: 'Tra cứu hội viên', icon: '🔎', el: Unavailable },
     { key: 'invoices', label: 'Hóa đơn', icon: '🧾', el: Invoices },
   ],
   coach: [{ key: 'schedule', label: 'Lịch dạy', icon: '📅', el: CoachSchedule }],
   member: [
     { key: 'home', label: 'Trang của tôi', icon: '🏠', el: MemberHome },
     { key: 'buy', label: 'Gói tập', icon: '🎫', el: BuyPackage },
-    { key: 'schedule', label: 'Lịch lớp học', icon: '📅', el: MemberSchedule },
+    { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
+    { key: 'schedule', label: 'Lịch tập cá nhân', icon: '📅', el: MemberSchedule },
     { key: 'profile', label: 'Hồ sơ', icon: '👤', el: Profile },
   ],
 }
 
 function RoleApp({ user, initialPage }) {
+  const { loading, loadError, refresh } = useStore()
   const [page, setPage] = useState(initialPage)
-  const menu = MENUS[user.role]
+  const menu = user.role === 'member' ? MENUS.member : [...MENUS[user.role], { key: 'profile', label: 'Hồ sơ', el: Profile }]
   const Page = (menu.find((m) => m.key === page) || menu[0]).el
   return (
     <Layout menu={menu} page={page} setPage={setPage}>
-      <Page goTo={setPage} />
+      {loading || loadError ? <MemberDataState error={loadError} retry={refresh} /> : <Page goTo={setPage} />}
     </Layout>
   )
 }
 
 function AuthScreens() {
-  const [authView, setAuthView] = useState('login')
-  return authView === 'login' ? (
-    <Login onRegister={() => setAuthView('register')} />
-  ) : (
-    <Register onLogin={() => setAuthView('login')} />
-  )
+  return <PublicApp />
 }
 
 export default function App() {
-  const { currentUser, memberships } = useStore()
+  const { currentUser } = useStore()
 
   if (!currentUser) return <AuthScreens />
 
-  let initialPage = MENUS[currentUser.role][0].key
-  // Member mới chưa có gói: đưa thẳng tới trang chọn gói
-  if (currentUser.role === 'member' && getMembershipStatus(currentUser.id, memberships).status === 'none') {
-    initialPage = 'buy'
-  }
+  const initialPage = MENUS[currentUser.role][0].key
 
   return <RoleApp key={currentUser.id} user={currentUser} initialPage={initialPage} />
 }

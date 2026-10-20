@@ -1,0 +1,76 @@
+{
+  "memberships": [
+    {
+      "id": "membership-201",
+      "userId": 2,
+      "packageId": 11,
+      "startDate": "2026-09-09",
+      "endDate": "2026-10-08"
+    },
+    {
+      "id": "membership-202",
+      "userId": 3,
+      "packageId": 12,
+      "startDate": "2026-08-01",
+      "endDate": "2026-10-06"
+    },
+    {
+      "id": "membership-203",
+      "userId": 4,
+      "packageId": 12,
+      "startDate": "2026-10-12",
+      "endDate": "2026-11-10"
+    }
+  ],
+  "payments": [
+    {
+      "id": "payment-201",
+      "userId": 2,
+      "membershipId": "membership-201",
+      "packageId": 11,
+      "invoiceNo": "HD-MOCK-0201",
+      "amount": 500000,
+      "method": "Chuyển khoản QR",
+      "channel": "Online",
+      "date": "2026-09-09",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "payment-202",
+      "userId": 3,
+      "membershipId": "membership-202",
+      "packageId": 12,
+      "invoiceNo": "HD-MOCK-0202",
+      "amount": 1350000,
+      "method": "Thẻ ngân hàng",
+      "channel": "Online",
+      "date": "2026-08-01",
+      "status": "COMPLETED"
+    }
+  ],
+  "purchaseRequest": {
+    "packageId": 11,
+    "method": "Chuyển khoản QR"
+  },
+  "purchaseResponse": {
+    "membership": {
+      "id": "membership-204",
+      "userId": 2,
+      "packageId": 11,
+      "startDate": "2026-10-09",
+      "endDate": "2026-11-07"
+    },
+    "payment": {
+      "id": "payment-204",
+      "userId": 2,
+      "membershipId": "membership-204",
+      "packageId": 11,
+      "invoiceNo": "HD-MOCK-0204",
+      "amount": 500000,
+      "method": "Chuyển khoản QR",
+      "channel": "Online",
+      "date": "2026-10-07",
+      "status": "COMPLETED"
+    }
+  }
+}

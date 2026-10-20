@@ -6,11 +6,13 @@ export const formatDate = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-export const todayISO = () => new Date().toISOString().slice(0, 10)
+export const todayISO = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(date)
 
 export const addDays = (iso, days) => {
   const d = new Date(iso)
-  d.setDate(d.getDate() + days)
+  d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
 
@@ -40,14 +42,23 @@ export const findConflicts = (candidate, classes) => {
 }
 
 // Trạng thái gói tập hiện tại của hội viên
-export const getMembershipStatus = (userId, memberships) => {
+export const getMembershipStatus = (userId, memberships, today = todayISO()) => {
   const list = memberships
     .filter((m) => m.userId === userId)
     .sort((a, b) => b.endDate.localeCompare(a.endDate))
-  const latest = list[0]
+  const active = list.filter((m) => m.startDate <= today && today <= m.endDate)
+  const future = list.filter((m) => m.startDate > today).sort((a, b) => a.startDate.localeCompare(b.startDate))
+  const latest = active[0] || future[0] || list[0]
   if (!latest) return { status: 'none', label: 'Chưa có gói', membership: null }
-  const today = todayISO()
+  if (latest.startDate > today) return { status: 'upcoming', label: 'Chưa đến ngày hiệu lực', membership: latest, daysLeft: 0 }
   if (latest.endDate < today) return { status: 'expired', label: 'Hết hạn', membership: latest }
   const daysLeft = Math.ceil((new Date(latest.endDate) - new Date(today)) / 86400000)
-  return { status: 'active', label: 'Đang hoạt động', membership: latest, daysLeft }
+  return { status: 'active', label: 'Đang hoạt động', membership: latest, daysLeft, expiringSoon: daysLeft <= 7 }
+}
+
+// Queue renewals after the last purchased period, not only the currently active one.
+export const nextMembershipStart = (userId, memberships, today = todayISO()) => {
+  const last = memberships.filter((m) => m.userId === userId && m.endDate >= today)
+    .sort((a, b) => b.endDate.localeCompare(a.endDate))[0]
+  return last ? addDays(last.endDate, 1) : today
 }

@@ -12,13 +12,9 @@ export const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
 export const SUBJECTS = ['Gym', 'Yoga', 'Boxing', 'Cardio', 'Zumba', 'Pilates']
 
-const addDays = (date, days) => {
-  const d = new Date(date)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
-}
+import { addDays, todayISO } from '../store/utils'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayISO()
 
 export const seedData = {
   users: [
