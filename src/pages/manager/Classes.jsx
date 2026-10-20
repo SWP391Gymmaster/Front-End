@@ -5,6 +5,21 @@ import EntityManager from '../../components/EntityManager'
 import { SUBJECTS } from '../../data/seed'
 import { formatDate } from '../../store/utils'
 
+const buildSessions = (f) => {
+  if (!f.days.length || f.start >= f.end || !f.fromDate) return []
+  const sessions = []
+  for (let i = 0; i < Number(f.weeks) * 7; i++) {
+    const date = addDays(f.fromDate, i)
+    if (f.days.includes(dayOf(date))) {
+      sessions.push({ startTime: `${date}T${f.start}:00`, endTime: `${date}T${f.end}:00` })
+    }
+  }
+  return sessions
+}
+
+const overlaps = (a, b) => a.startTime < b.endTime && b.startTime < a.endTime
+const sameId = (a, b) => String(a) === String(b)
+
 export default function Classes() {
   const { t } = usePreferences()
   const { classes, schedules, rooms, users, saveClass, deleteClass, saveSchedule, deleteSchedule, api } = useStore()

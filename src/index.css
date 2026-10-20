@@ -217,9 +217,20 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .invoice-total strong { font-size: 20px; }
 
 @media print {
-  body * { visibility: hidden; }
-  .print-area, .print-area * { visibility: visible; }
-  .print-area { position: fixed; left: 0; top: 0; width: 100%; border: 0; }
+  /* In hóa đơn: chỉ hiện khung .print-area */
+  body:not([data-print="report"]) * { visibility: hidden; }
+  body:not([data-print="report"]) .print-area,
+  body:not([data-print="report"]) .print-area * { visibility: visible; }
+  body:not([data-print="report"]) .print-area { position: fixed; left: 0; top: 0; width: 100%; border: 0; }
+
+  /* In báo cáo: ẩn menu, nút bấm; giữ nguyên nội dung trang */
+  body[data-print="report"] { background: #fff; }
+  body[data-print="report"] .sidebar,
+  body[data-print="report"] .topbar,
+  body[data-print="report"] .no-print { display: none !important; }
+  body[data-print="report"] .app-shell { display: block; }
+  body[data-print="report"] .content { padding: 0; max-width: none; }
+  body[data-print="report"] .card, body[data-print="report"] .stat { box-shadow: none; break-inside: avoid; }
 }
 
 @media (max-width: 900px) {

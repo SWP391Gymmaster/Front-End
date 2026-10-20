@@ -5,6 +5,7 @@ import MemberDataState from './components/MemberDataState'
 import Unavailable from './components/Unavailable'
 import PublicApp from './pages/public/PublicApp'
 import ManagerDashboard from './pages/manager/Dashboard'
+import Reports from './pages/manager/Reports'
 import Packages from './pages/manager/Packages'
 import Rooms from './pages/manager/Rooms'
 import Classes from './pages/manager/Classes'
@@ -17,7 +18,8 @@ import Payments, { Invoices } from './pages/Payments'
 
 const MENUS = {
   manager: [
-    { key: 'dashboard', label: 'Tổng quan', icon: '📊', el: ManagerDashboard },
+    { key: 'dashboard', label: 'Tổng quan doanh thu', icon: '📊', el: ManagerDashboard },
+    { key: 'reports', label: 'Báo cáo & Tiến độ', icon: '📈', el: Reports },
     { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: Packages },
     { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
     { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
@@ -28,7 +30,6 @@ const MENUS = {
     { key: 'search', label: 'Tra cứu hội viên', icon: '🔎', el: Unavailable },
     { key: 'invoices', label: 'Hóa đơn', icon: '🧾', el: Invoices },
   ],
-  coach: [{ key: 'schedule', label: 'Lịch dạy', icon: '📅', el: CoachSchedule }],
   member: [
     { key: 'home', label: 'Trang của tôi', icon: '🏠', el: MemberHome },
     { key: 'buy', label: 'Gói tập', icon: '🎫', el: BuyPackage },
@@ -57,7 +58,7 @@ function AuthScreens() {
 export default function App() {
   const { currentUser } = useStore()
 
-  if (!currentUser) return <AuthScreens />
+  if (!session) return <AuthScreens />
 
   const initialPage = MENUS[currentUser.role][0].key
 
