@@ -70,9 +70,8 @@
 /* Member-only appearance; preserve existing staff dashboards and print styles. */
 .member-portal { min-height: 100vh; background: var(--bg); color: var(--text); }
 .member-preferences { display: flex; justify-content: flex-end; padding: 8px 20px; background: var(--surface); }
-.preferences-controls, .language-switch { display: flex; align-items: center; gap: 6px; }
+.preferences-controls { display: flex; align-items: center; gap: 6px; }
 .preferences-controls button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
-.language-switch button[aria-pressed="true"] { background: var(--primary); color: white; }
 :root[data-theme="dark"] .member-portal { --bg: #101b16; --surface: #19271f; --text: #edf6f0; --muted: #a4b9ac; --border: #33483b; --primary-soft: #203e2c; --primary-dark: #74d59a; --danger-soft: #422329; --info-soft: #1e3547; color-scheme: dark; }
 .member-portal .main, .member-portal .card, .member-portal .modal { color: var(--text); }
 .member-portal .btn:hover { background: var(--primary-soft); }

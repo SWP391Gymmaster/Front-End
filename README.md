@@ -77,7 +77,7 @@ npm run build
 
 `test:api` chạy offline với HTTP transport mô phỏng theo DTO/controller BE: auth, payload CRUD, ID số, lịch có ngày, response 204/text, lỗi và session đổi trong lúc tải. Không tạo dữ liệu thật trong MySQL. `test:member` và `src/services/memberService.js` giữ lại kiểm thử logic mock cũ làm tham khảo, không được dùng bởi UI hiện tại.
 
-Kiểm tra trực tiếp khi BE chạy: đăng nhập từng vai trò; tạo/sửa/xóa dữ liệu test ở Manager; xem lịch Coach; đặt/hủy buổi ở Member; tải lại trang; đăng xuất; đổi VI/EN và sáng/tối. Tạo lịch tương lai để Member nhìn thấy trong danh sách khả dụng.
+Kiểm tra trực tiếp khi BE chạy: đăng nhập từng vai trò; tạo/sửa/xóa dữ liệu test ở Manager; xem lịch Coach; đặt/hủy buổi ở Member; tải lại trang; đăng xuất; đổi giao diện sáng/tối. Giao diện hiện dùng tiếng Việt thống nhất. Tạo lịch tương lai để Member nhìn thấy trong danh sách khả dụng.
 
 Kiểm tra luồng mới bằng dữ liệu test: Member → Gói tập → chọn gói → tạo yêu cầu → Thanh toán & Hóa đơn. Với online, bấm Mô phỏng thanh toán và xác nhận; kiểm tra hóa đơn đã thanh toán và Trang của tôi có membership. Với tiền mặt, đăng nhập Manager/Receptionist để xác nhận khoản chờ, hoặc thu tiền trực tiếp cho hội viên bằng ID. Không thu tiền trực tiếp thêm cho một yêu cầu đang chờ: hãy xác nhận yêu cầu đó để tránh tạo hai giao dịch. `test:payments` kiểm tra các route/DTO, chuyển trạng thái và ranh giới hạn gói offline, không ghi giao dịch thật.
 

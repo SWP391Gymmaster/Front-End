@@ -3,6 +3,14 @@ import { publicService } from '../../services/publicService'
 import { LoginForm, RegisterForm } from './AuthForms'
 import '../../public.css'
 
+const emailVerificationRequests = new Map()
+function verifyEmailOnce(token) {
+  if (!emailVerificationRequests.has(token)) {
+    emailVerificationRequests.set(token, publicService.verifyEmail(token))
+  }
+  return emailVerificationRequests.get(token)
+}
+
 function useCatalog(kind) {
   const [result, setResult] = useState(null)
   const [attempt, setAttempt] = useState(0)
@@ -30,14 +38,36 @@ function Home() {
 function ClassesRequiresLogin() {
   return <section className="fe1-section fe1-classes"><div className="fe1-empty"><h1>Đăng nhập để xem danh sách lớp</h1><p>Danh sách lớp và lịch tập được hiển thị sau khi bạn đăng nhập.</p><a className="fe1-button" href="#/login">Đăng nhập</a></div></section>
 }
+function EmailVerificationPage() {
+  const token = new URLSearchParams(window.location.search).get('token') || ''
+  const [state, setState] = useState({ busy: true, success: false, message: '' })
+  useEffect(() => {
+    let active = true
+    if (!token) {
+      setState({ busy: false, success: false, message: 'Liên kết xác minh không có token.' })
+      return () => { active = false }
+    }
+    verifyEmailOnce(token).then(result => {
+      if (active) setState({ busy: false, success: true, message: result?.message || 'Email đã được xác minh thành công.' })
+    }).catch(error => {
+      if (active) setState({ busy: false, success: false, message: error.message })
+    })
+    return () => { active = false }
+  }, [token])
+  return <section className="fe1-empty" aria-live="polite">
+    <h1>{state.busy ? 'Đang xác minh email…' : state.success ? 'Xác minh email thành công' : 'Không thể xác minh email'}</h1>
+    <p>{state.busy ? 'Vui lòng chờ trong giây lát.' : state.message}</p>
+    {!state.busy && <a className="fe1-button" href={state.success ? '#/login' : '#/register'}>{state.success ? 'Đến trang đăng nhập' : 'Quay lại đăng ký'}</a>}
+  </section>
+}
 export default function PublicApp() {
   const [hash, setHash] = useState(() => window.location.hash)
   const [dark, setDark] = useState(false)
   useEffect(() => { const update = () => setHash(window.location.hash); window.addEventListener('hashchange', update); return () => window.removeEventListener('hashchange', update) }, [])
   const [path] = hash.replace(/^#/, '').split('?')
-  const route = path || '/home'
-  useEffect(() => { window.scrollTo(0, 0); document.title = `GymMaster | ${route === '/classes' ? 'Đăng nhập để xem lớp' : route === '/register' ? 'Đăng ký' : route === '/login' ? 'Đăng nhập' : route === '/verify' ? 'Xác minh email' : 'Trang chủ'}` }, [route])
+  const route = path || (window.location.pathname.endsWith('/verify-email') ? '/verify-email' : '/home')
+  useEffect(() => { window.scrollTo(0, 0); document.title = `GymMaster | ${route === '/classes' ? 'Đăng nhập để xem lớp' : route === '/register' ? 'Đăng ký' : route === '/login' ? 'Đăng nhập' : route === '/verify-email' ? 'Xác minh email' : 'Trang chủ'}` }, [route])
   return <div className={`fe1-site ${dark ? 'fe1-dark' : ''}`}><a className="fe1-skip" href="#fe1-content" onClick={e => { e.preventDefault(); document.getElementById("fe1-content")?.focus() }}>Bỏ qua điều hướng</a><header className="fe1-nav"><a className="fe1-brand" href="#/home"><span>GM</span>GYMMASTER</a><nav aria-label="Điều hướng chính"><a href="#/home" aria-current={route === '/home' ? 'page' : undefined}>Trang chủ</a><a href="#/login" aria-current={route === '/login' ? 'page' : undefined}>Đăng nhập</a><a className="fe1-button" href="#/register">Đăng ký</a><button className="fe1-theme" aria-label={dark ? 'Bật giao diện sáng' : 'Bật giao diện tối'} onClick={() => setDark(v => !v)}>{dark ? '☀' : '☾'}</button></nav></header><main id="fe1-content" tabIndex={-1}>
-    {route === '/home' ? <Home /> : route === '/classes' ? <ClassesRequiresLogin /> : route === '/register' ? <RegisterForm /> : route === '/login' ? <LoginForm /> : route === '/verify' ? <section className="fe1-empty"><h1>Đăng ký để nhận mã OTP</h1><p>Mã xác minh được gửi đến Gmail sau khi bạn đăng ký tài khoản.</p><a className="fe1-button" href="#/register">Đến trang đăng ký</a></section> : <section className="fe1-empty"><h1>Không tìm thấy trang</h1><a href="#/home">Về trang chủ</a></section>}
+    {route === '/home' ? <Home /> : route === '/classes' ? <ClassesRequiresLogin /> : route === '/register' ? <RegisterForm /> : route === '/login' ? <LoginForm /> : route === '/verify-email' ? <EmailVerificationPage /> : <section className="fe1-empty"><h1>Không tìm thấy trang</h1><a href="#/home">Về trang chủ</a></section>}
   </main><footer className="fe1-footer"><strong>GYMMASTER</strong><p>Chuyển động hôm nay. Khỏe hơn mỗi ngày.</p></footer></div>
 }

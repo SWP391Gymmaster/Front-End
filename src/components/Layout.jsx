@@ -10,7 +10,7 @@ const icons = { dashboard: 'grid', packages: 'ticket', rooms: 'room', classes: '
 
 export default function Layout({ menu, page, setPage, children }) {
   const { currentUser, logout } = useStore()
-  const { t, language } = usePreferences()
+  const { t } = usePreferences()
   const [menuOpen, setMenuOpen] = useState(false)
   const current = menu.find((m) => m.key === page)
   return <div className="app-shell">
@@ -25,7 +25,7 @@ export default function Layout({ menu, page, setPage, children }) {
     </aside>
     <main className="main">
       <header className="topbar"><div className="topbar-title"><button className="theme-toggle mobile-menu" aria-expanded={menuOpen} aria-controls="main-navigation" aria-label={t('Mở menu')} onClick={() => setMenuOpen(!menuOpen)}><Icon name={menuOpen ? 'close' : 'menu'} /></button><div><div className="breadcrumb">{t('Không gian quản lý')} <span>/</span> {t(ROLES[currentUser.role])}</div><h1>{t(current?.label)}</h1></div></div><div className="topbar-actions"><PreferencesControls /><Avatar name={currentUser.name} src={currentUser.avatarUrl} className="topbar-avatar" /></div></header>
-      <div className="content"><div className="page-heading"><div><span className="eyebrow muted">GYMMASTER WORKSPACE</span><h2>{t('Xin chào')}, {currentUser.name.split(' ').pop()} <span className="greeting-dot">✦</span></h2><p>{t('Sẵn sàng cho một ngày tràn đầy năng lượng.')}</p></div><span className="date-chip"><Icon name="calendar" size={16} />{new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())}</span></div>{children}<footer className="workspace-footer"><span>© {new Date().getFullYear()} GymMaster</span><span>{t('Kết nối vận hành. Nâng tầm trải nghiệm.')}</span></footer></div>
+      <div className="content"><div className="page-heading"><div><span className="eyebrow muted">GYMMASTER WORKSPACE</span><h2>{t('Xin chào')}, {currentUser.name.split(' ').pop()} <span className="greeting-dot">✦</span></h2><p>{t('Sẵn sàng cho một ngày tràn đầy năng lượng.')}</p></div><span className="date-chip"><Icon name="calendar" size={16} />{new Intl.DateTimeFormat('vi-VN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())}</span></div>{children}<footer className="workspace-footer"><span>© {new Date().getFullYear()} GymMaster</span><span>{t('Kết nối vận hành. Nâng tầm trải nghiệm.')}</span></footer></div>
     </main>
   </div>
 }

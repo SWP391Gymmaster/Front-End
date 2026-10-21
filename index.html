@@ -11,7 +11,7 @@
       try {
         const theme = localStorage.getItem('gm-theme')
         document.documentElement.dataset.theme = ['light', 'dark'].includes(theme) ? theme : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        document.documentElement.lang = localStorage.getItem('gm-language') === 'en' ? 'en' : 'vi'
+        document.documentElement.lang = 'vi'
       } catch { /* Use the default theme when storage is unavailable. */ }
     </script>
   </head>

@@ -58,7 +58,7 @@ function AuthScreens() {
 export default function App() {
   const { currentUser } = useStore()
 
-  if (!session) return <AuthScreens />
+  if (!currentUser) return <AuthScreens />
 
   const initialPage = MENUS[currentUser.role][0].key
 

@@ -10,17 +10,15 @@ function readPreference(key, fallback, allowed) {
 }
 
 export default function PreferencesProvider({ children }) {
-  const [language, setLanguage] = useState(() => readPreference('gm-language', 'vi', ['vi', 'en']))
   const [theme, setTheme] = useState(() => readPreference('gm-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', ['light', 'dark']))
   useEffect(() => {
-    document.documentElement.lang = language
+    document.documentElement.lang = 'vi'
     document.documentElement.dataset.theme = theme
-    document.title = language === 'vi' ? 'GymMaster | Quản lý phòng tập' : 'GymMaster | Fitness management'
+    document.title = 'GymMaster | Quản lý phòng tập'
     try {
-      localStorage.setItem('gm-language', language)
       localStorage.setItem('gm-theme', theme)
     } catch { /* Preferences still work when browser storage is unavailable. */ }
-  }, [language, theme])
-  const t = (value) => translate(value, language)
-  return <PreferencesContext.Provider value={{ language, setLanguage, theme, setTheme, t }}>{children}</PreferencesContext.Provider>
+  }, [theme])
+  const t = (value) => translate(value)
+  return <PreferencesContext.Provider value={{ theme, setTheme, t }}>{children}</PreferencesContext.Provider>
 }

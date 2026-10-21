@@ -7,29 +7,29 @@ for (const field of ['fullName', 'userName', 'email', 'phone', 'password', 'conf
 for (const password of ['password123', 'PASSWORD123!', 'StrongPass!', 'Strong123', ' Strong123!', 'a'.repeat(73)]) assert(validateRegistration({ ...good, password, confirm: password }).password)
 assert(validateRegistration({ ...good, userName: 'Lại Anh Đức' }).userName)
 const calls = []
-let response = { status: 'sent', email: good.email }, httpStatus = 201
+let response = { userId: 7, email: good.email, verificationRequired: true, verificationEmailStatus: 'SENT' }, httpStatus = 201
 const service = createPublicService({ fetchImpl: async (url, options) => {
   calls.push({ url, options })
   return new Response(JSON.stringify(response), { status: httpStatus })
 } })
-assert.deepEqual(await service.register(good), { email: good.email })
+assert.deepEqual(await service.register(good), { email: good.email, verificationEmailStatus: 'SENT' })
 const body = JSON.parse(calls.at(-1).options.body)
 assert.equal(body.fullName, good.fullName)
 assert(!('confirm' in body) && !('role' in body) && !('packageId' in body))
 assert(!calls.at(-1).options.headers.Authorization)
 response = [{ id: 1, active: true }, { id: 2, active: false }]
 assert.deepEqual(await service.packages(), [{ id: 1, active: true }])
-for (const verificationStatus of ['verified', 'expired', 'invalid', 'locked']) {
-  response = { status: verificationStatus }
-  assert.equal(await service.verifyOtp(good.email, '123456'), verificationStatus)
-  assert.equal(calls.at(-1).url.endsWith('/auth/verify-email'), true)
-  assert.deepEqual(JSON.parse(calls.at(-1).options.body), { email: good.email, otp: '123456' })
-}
-response = { status: 'sent' }
-assert.equal((await service.resendOtp(good.email)).status, 'sent')
-response = { status: 'unknown' }
-await assert.rejects(service.verifyOtp(good.email, '123456'), /không hợp lệ/)
-await assert.rejects(service.resendOtp(good.email), /Chưa nhận/)
+response = { message: 'Email verified. You can now log in.' }
+assert.equal((await service.verifyEmail('one-time-token')).message, response.message)
+assert.equal(calls.at(-1).url.endsWith('/auth/verify-email'), true)
+assert.deepEqual(JSON.parse(calls.at(-1).options.body), { token: 'one-time-token' })
+response = { message: 'If the account can be verified, a verification email will be sent.' }
+assert.equal((await service.resendVerification(good.email)).message, response.message)
+assert.equal(calls.at(-1).url.endsWith('/auth/resend-verification'), true)
+assert.deepEqual(JSON.parse(calls.at(-1).options.body), { email: good.email })
+await assert.rejects(service.verifyEmail(''), /không có token/)
+response = {}
+await assert.rejects(service.resendVerification(good.email), /không hợp lệ/)
 httpStatus = 409; response = { message: 'Email already exists' }
 await assert.rejects(service.register(good), /Email/)
-console.log('PASS: registration waits for OTP delivery, strong validation, verification statuses, resend and backend errors.')
+console.log('PASS: registration, link-token email verification, resend, validation and backend errors.')

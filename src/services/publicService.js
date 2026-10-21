@@ -22,22 +22,21 @@ export function createPublicService({ baseUrl = '/backend', fetchImpl } = {}) {
         userName: form.userName.trim(), fullName: form.fullName.trim(), email: form.email.trim(),
         phone: form.phone.trim(), password: form.password,
       } })
-      if (result?.status !== 'sent') throw new Error('Máy chủ chưa gửi được mã OTP.')
-      return { email: result.email || form.email.trim() }
+      if (!result?.email || !result?.verificationRequired) throw new Error(result?.message || 'Phản hồi đăng ký từ máy chủ không hợp lệ.')
+      return { email: result.email, verificationEmailStatus: result.verificationEmailStatus }
     },
     async packages() {
       const data = await request('/api/membership-packages', { auth: false })
       if (!Array.isArray(data)) throw new Error('Dữ liệu danh mục không hợp lệ.')
       return data.filter(p => p.active)
     },
-    async verifyOtp(email, otp) {
-      const data = await request('/auth/verify-email', { method: 'POST', auth: false, body: { email, otp } })
-      if (!['verified', 'expired', 'invalid', 'locked'].includes(data?.status)) throw new Error('Phản hồi xác minh OTP không hợp lệ.')
-      return data.status
+    async verifyEmail(token) {
+      if (!token?.trim()) throw new Error('Liên kết xác minh email không có token.')
+      return request('/auth/verify-email', { method: 'POST', auth: false, body: { token: token.trim() } })
     },
-    async resendOtp(email) {
-      const data = await request('/auth/resend-otp', { method: 'POST', auth: false, body: { email: email.trim() } })
-      if (data?.status !== 'sent') throw new Error('Chưa nhận được xác nhận gửi email.')
+    async resendVerification(email) {
+      const data = await request('/auth/resend-verification', { method: 'POST', auth: false, body: { email: email.trim() } })
+      if (!data?.message) throw new Error('Phản hồi gửi lại email từ máy chủ không hợp lệ.')
       return data
     },
   }
