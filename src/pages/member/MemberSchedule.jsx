@@ -8,9 +8,11 @@ import Modal from '../../components/MemberModal'
 import Icon from '../../components/Icon'
 import WeekTimetable from '../../components/WeekTimetable'
 import { normalize } from '../../services/classroom'
+import { useStore } from '../../store/context'
 
 export default function MemberSchedule({ goTo }) {
   const { t } = usePreferences()
+  const { classes = [] } = useStore()
   const { data, error, loading, retry, memberService } = useMemberPortal()
   const [tab, setTab] = useState('mine')
   const [subject, setSubject] = useState('all')
@@ -26,7 +28,11 @@ export default function MemberSchedule({ goTo }) {
   const { sessions, enrollments, status } = data
   const now = new Date()
   const upcoming = enrollments.filter((e) => new Date(e.session.endTime) > now)
-  const records = tab === 'available' ? sessions : (tab === 'past' ? enrollments.filter((e) => new Date(e.session.endTime) <= now) : upcoming).map((e) => e.session)
+  const rawRecords = tab === 'available' ? sessions : (tab === 'past' ? enrollments.filter((e) => new Date(e.session.endTime) <= now) : upcoming).map((e) => e.session)
+  const records = rawRecords.map(session => {
+    const cls = classes.find(item => item.id === session.classId)
+    return { ...session, classCode: cls?.classCode || '', description: cls?.description || '' }
+  })
   const visible = records.filter((s) => (subject === 'all' || s.subject === subject) && (!date || s.date === date) && (!query || normalize(`${s.classCode} ${s.name} ${s.description}`).includes(normalize(query))) && (!coach || s.coachName === coach) && (!time || (s.startTime.slice(11, 16) <= time && s.endTime.slice(11, 16) > time))).sort((a, b) => a.startTime.localeCompare(b.startTime))
   const subjects = [...new Set([...sessions, ...enrollments.map((e) => e.session)].map((s) => s.subject))]
   const open = (session, cancel = false) => { setSelected({ session, cancel }); setActionError(''); setNotice('') }
