@@ -1,34 +1,26 @@
 import { useState } from 'react'
 import Invoice from '../../components/Invoice'
 import { ErrorBox, Loading } from '../../components/Status'
-import { authApi, packageApi, paymentApi } from '../../api/services'
 import useApi from '../../api/useApi'
 import { useStore } from '../../store/context'
-import { formatMoney } from '../../store/utils'
 
-const DEFAULT_PASSWORD = '12345678'
-const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '' }
-
-export default function CounterRegister() {
-  const { addMember } = useStore()
 import { authApi, invoiceApi, packageApi, paymentApi } from '../../api/services'
-import useApi from '../../api/useApi'
 import { addDays, formatDate, formatMoney, printSection, todayISO } from '../../store/utils'
 
 const DEFAULT_PASSWORD = '12345678'
-const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '', note: '', method:'CASH' }
+const EMPTY = { fullName: '', userName: '', phone: '', email: '', packageId: '', note: '', method: 'CASH' }
 const toUserName = (email) => email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '')
 
 export default function CounterRegister() {
+  const { addMember } = useStore()
   const { data: packages, loading, error: loadError, reload } = useApi(() => packageApi.list())
+  
   const [form, setForm] = useState(EMPTY)
   const [userNameTouched, setUserNameTouched] = useState(false)
   const [member, setMember] = useState(null) 
   const [result, setResult] = useState(null) 
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState(null)
-  const [pendingMember, setPendingMember] = useState(null)
 
   const active = (packages || []).filter((p) => p.active !== false)
   const pkg = active.find((p) => String(p.id) === form.packageId)
@@ -37,12 +29,6 @@ export default function CounterRegister() {
   const setEmail = (e) => {
     const email = e.target.value
     setForm({ ...form, email, userName: userNameTouched ? form.userName : toUserName(email) })
-  }
-
-  const checkout = async (memberId) => {
-    const payment = await paymentApi.cashCheckout({ memberId, packageId: pkg.id, note: form.note || undefined })
-    const invoice = await invoiceApi.get(payment.invoiceId)
-    setResult({ payment, invoice })
   }
 
   const submit = async (e) => {
@@ -54,15 +40,15 @@ export default function CounterRegister() {
       }
     }
     if (!pkg) return setError('Vui lòng chọn gói tập')
+    
     setError('')
     setSaving(true)
-    let memberCreated = Boolean(pendingMember)
+    
+    let memberCreated = Boolean(member);
+    let created = member;
+
     try {
-      let member = pendingMember
-      if (!member) {
-        member = await authApi.register({
-    let created = member
-    try {
+      // 1. Tạo tài khoản nếu chưa có
       if (!created) {
         const res = await authApi.register({
           userName: form.userName,
@@ -70,38 +56,46 @@ export default function CounterRegister() {
           email: form.email.trim(),
           phone: form.phone,
           password: DEFAULT_PASSWORD,
-        })
-        memberCreated = true
-        setPendingMember(member)
+        });
+
+        memberCreated = true;
+        created = {
+          userId: res.userId,
+          email: res.email,
+          fullName: res.fullName,
+        };
+
+        setMember(created);
+
         addMember({
-          userId: member.userId,
+          userId: created.userId,
           email: form.email.trim(),
           fullName: form.fullName,
           phone: form.phone,
-        })
+        });
       }
+
+      // 2. Tiến hành thanh toán và lấy hóa đơn
       const payment = await paymentApi.cashCheckout({
-        memberId: member.userId,
+        memberId: created.userId,
         packageId: pkg.id,
-        note: `Thu tiền tại quầy cho gói ${pkg.name}`,
-      })
-      setResult(payment)
+        note: form.note || `Thu tiền tại quầy cho gói ${pkg.name}`,
+      });
+      
+      const invoice = await invoiceApi.get(payment.invoiceId);
+
+      setResult({ payment, invoice });
     } catch (err) {
-      setError(memberCreated
-        ? `Tài khoản hội viên đã được tạo nhưng chưa thu tiền thành công. ${err.message} Vui lòng thử thu tiền lại.`
-        : err.message)
-        created = { userId: res.userId, email: res.email, fullName: res.fullName }
-        setMember(created)
+      // Xử lý lỗi thông minh: phân biệt lỗi lúc tạo tài khoản hay lúc thu tiền
+      if (memberCreated) {
+        setError(
+          `Tài khoản hội viên đã được tạo nhưng chưa thu tiền thành công. ${err.message}. Vui lòng bấm "Thu tiền" để thử lại.`
+        );
+      } else {
+        setError(err.message);
       }
-      await checkout(created.userId)
-    } catch (err) {
-      setError(
-        created
-          ? `Đã tạo tài khoản nhưng chưa thu được tiền: ${err.message}. Bấm "Thu tiền" để thử lại.`
-          : err.message,
-      )
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
@@ -115,19 +109,13 @@ export default function CounterRegister() {
 
   if (result) {
     return (
-      <div className="card narrow">
+      <div className="card narrow" id="invoice">
         <div className="success-mark">✔</div>
         <h3 className="center">Đăng ký hội viên thành công</h3>
         <p className="center muted">
-          Tài khoản đăng nhập: <strong>{form.email}</strong> · mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>
-        </p>
-        <Invoice payment={result} />
-        <div className="form-actions">
-          <button className="btn btn-ghost" onClick={() => window.print()}>In hóa đơn</button>
-          <button className="btn btn-primary" onClick={() => { setResult(null); setPendingMember(null); setForm(EMPTY); setUserNameTouched(false) }}>Đăng ký hội viên khác</button>
-          Tài khoản: <strong>{member.email}</strong> · mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>
+          Tài khoản: <strong>{member?.email || form.email}</strong> · mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>
           <br />
-          Gói tập đã được kích hoạt, tiền đã ghi nhận vào doanh thu.
+          <p>Gói tập đã được kích hoạt, tiền đã ghi nhận vào doanh thu.</p>
         </p>
         <Invoice invoice={result.invoice} payment={result.payment} />
         <div className="form-actions">
@@ -142,29 +130,22 @@ export default function CounterRegister() {
     <div className="two-col wide-left">
       <div className="card">
         <div className="card-head"><h3>Thông tin hội viên mới</h3></div>
-        <form className="form" onSubmit={submit} id="counter-form">
-          <label>Họ và tên<input value={form.fullName} onChange={set('fullName')} required disabled={Boolean(pendingMember)} /></label>
-          <div className="row-2">
-            <label>Email<input type="email" value={form.email} onChange={setEmail} required disabled={Boolean(pendingMember)} /></label>
-            <label>Số điện thoại<input value={form.phone} onChange={set('phone')} required placeholder="09xxxxxxxx" disabled={Boolean(pendingMember)} /></label>
-          </div>
-          <label>
-            Tên đăng nhập
-            <input value={form.userName} onChange={(e) => { setUserNameTouched(true); set('userName')(e) }} required disabled={Boolean(pendingMember)} />
-          </label>
+        
         <ol className="steps">
           <li className={member ? 'done' : 'on'}>Tạo tài khoản</li>
           <li className={member ? 'on' : ''}>Thu tiền</li>
           <li>In hóa đơn</li>
         </ol>
+
         {member && (
           <div className="alert alert-info">
             Đã tạo tài khoản <strong>{member.email}</strong> (mã #{member.userId}). Chỉ còn bước thu tiền.{' '}
-            <button className="link" onClick={reset}>Hủy, nhập hội viên khác</button>
+            <button className="link" onClick={reset} type="button">Hủy, nhập hội viên khác</button>
           </div>
         )}
+
         <form className="form" onSubmit={submit} id="counter-form">
-          <fieldset disabled={!!member} className="plain">
+          <fieldset disabled={Boolean(member)} className="plain">
             <label>Họ và tên<input value={form.fullName} onChange={set('fullName')} required /></label>
             <div className="row-2">
               <label>Email<input type="email" value={form.email} onChange={setEmail} required /></label>
@@ -175,6 +156,7 @@ export default function CounterRegister() {
               <input value={form.userName} onChange={(e) => { setUserNameTouched(true); set('userName')(e) }} required />
             </label>
           </fieldset>
+
           <div className="field">
             <span>Chọn gói tập</span>
             <ErrorBox error={loadError} onRetry={reload} />
@@ -182,24 +164,27 @@ export default function CounterRegister() {
             <div className="pkg-pick">
               {active.map((p) => (
                 <label key={p.id} className={'method' + (form.packageId === String(p.id) ? ' on' : '')}>
-                  <input type="radio" name="pkg" checked={form.packageId === String(p.id)} onChange={() => setForm({ ...form, packageId: String(p.id) })} disabled={Boolean(pendingMember)} />
+                  <input type="radio" name="pkg" checked={form.packageId === String(p.id)} onChange={() => setForm({ ...form, packageId: String(p.id) })} disabled={Boolean(member)} />
                   <span><strong>{p.name}</strong><br /><span className="small muted">{formatMoney(p.price)} · {p.durationDays} ngày</span></span>
                 </label>
               ))}
             </div>
           </div>
-          <div className="alert alert-info small">Thanh toán tại quầy bằng tiền mặt. Gói chỉ được kích hoạt sau khi giao dịch được hệ thống xác nhận.</div>
+
+          <div className="alert alert-info small">Thanh toán tại quầy. Gói chỉ được kích hoạt sau khi giao dịch được hệ thống xác nhận.</div>
+          
           <div className="row-2">
             <label>
               Hình thức thanh toán
               <select value={form.method} onChange={set('method')}>
-                  <option value="CASH">Tiền mặt</option>
-                  <option value="BANK_TRANSFER">Chuyển khoản</option>
-                  <option value="CREDIT_CARD">Thẻ tín dụng</option>
+                <option value="CASH">Tiền mặt</option>
+                <option value="BANK_TRANSFER">Chuyển khoản</option>
+                <option value="CREDIT_CARD">Thẻ tín dụng</option>
               </select>
             </label>
             <label>Ghi chú (không bắt buộc)<input value={form.note} onChange={set('note')} /></label>
           </div>
+
           {error && <div className="alert alert-error">{error}</div>}
         </form>
       </div>
@@ -208,23 +193,19 @@ export default function CounterRegister() {
         <div className="card-head"><h3>Tóm tắt</h3></div>
         {pkg ? (
           <div className="summary">
-          <div><span>Gói</span><strong>{pkg.name}</strong></div>
-          <div><span>Thời hạn</span><strong>{pkg.durationDays} ngày</strong></div>
-          <div><span>Thanh toán</span><strong>Tiền mặt tại quầy</strong></div>
-          <div className="total"><span>Tổng tiền</span><strong>{formatMoney(pkg.price)}</strong></div>
             <div><span>Gói</span><strong>{pkg.name}</strong></div>
+            <div><span>Thời hạn</span><strong>{pkg.durationDays} ngày</strong></div>
             <div><span>Hiệu lực dự kiến</span><strong>{formatDate(todayISO())} → {formatDate(addDays(todayISO(), pkg.durationDays - 1))}</strong></div>
-            <div><span>Thanh toán</span><strong>Tiền mặt</strong></div>
+            <div><span>Thanh toán</span><strong>{form.method === 'CASH' ? 'Tiền mặt' : form.method === 'BANK_TRANSFER' ? 'Chuyển khoản' : 'Thẻ tín dụng'}</strong></div>
             <div className="total"><span>Tổng tiền</span><strong>{formatMoney(pkg.price)}</strong></div>
           </div>
         ) : (
           <p className="muted">Chọn gói tập để xem tổng tiền.</p>
         )}
         <p className="small muted">Tài khoản, khoản thu và hóa đơn được ghi nhận trên hệ thống.</p>
+        
         <button className="btn btn-primary full" type="submit" form="counter-form" disabled={saving}>
-          {saving ? 'Đang xử lý...' : pendingMember ? 'Thử thu tiền lại' : 'Xác nhận thu tiền & đăng ký'}
-        <button className="btn btn-primary full" type="submit" form="counter-form" disabled={saving}>
-          {saving ? 'Đang xử lý...' : member ? 'Thu tiền' : 'Xác nhận thu tiền & đăng ký'}
+          {saving ? 'Đang xử lý...' : member ? 'Thử thu tiền lại' : 'Xác nhận thu tiền & đăng ký'}
         </button>
       </div>
     </div>
