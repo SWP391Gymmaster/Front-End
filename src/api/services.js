@@ -3,6 +3,8 @@ import { api } from './client'
 export const authApi = {
   login: (email, password) => api('/auth/login', { method: 'POST', body: { email, password } }),
   register: (data) => api('/auth/register', { method: 'POST', body: data }),
+  verifyEmail: (token) => api('/auth/verify-email', { method: 'POST', body: { token } }),
+  resendVerification: (email) => api('/auth/resend-verification', { method: 'POST', body: { email } }),
 }
 
 const crud = (base) => ({
@@ -26,7 +28,6 @@ export const coachApi = {
   list: () => api('/api/coaches'),
 }
 
-export const classEnrollmentApi = {
 // ---------- Thanh toán & hóa đơn ----------
 export const paymentApi = {
   list: () => api('/api/payments'),
@@ -59,15 +60,4 @@ export const enrollmentApi = {
   mine: () => api('/api/member/class-enrollments'),
   enroll: (scheduleId) => api(`/api/member/class-sessions/${scheduleId}/enrollment`, { method: 'POST' }),
   cancel: (scheduleId) => api(`/api/member/class-sessions/${scheduleId}/enrollment`, { method: 'DELETE' }),
-}
-
-export const paymentApi = {
-  checkout: (data) => api('/api/member/payments/checkout', { method: 'POST', body: data }),
-  simulatePayment: (paymentId) => api(`/api/member/payments/${paymentId}/simulate-pay`, { method: 'POST' }),
-  myPayments: () => api('/api/member/payments'),
-  myInvoices: () => api('/api/member/invoices'),
-  myMemberships: () => api('/api/member/memberships'),
-  cashCheckout: (data) => api('/api/payments/cash-checkout', { method: 'POST', body: data }),
-  list: () => api('/api/payments'),
-  invoices: () => api('/api/invoices'),
 }

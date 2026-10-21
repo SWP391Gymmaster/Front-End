@@ -1,29 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
+// deps contains stable primitive query keys (for example a coach ID).
+// Keep the latest committed loader without restarting for each inline function render.
 export default function useApi(loader, deps = []) {
   const [state, setState] = useState({ data: null, loading: true, error: '' })
-
-  const load = useCallback(loader, deps)
-
+  const loaderRef = useRef(loader)
+  const generation = useRef({ value: 0 })
+  const queryKey = JSON.stringify(deps)
+  useEffect(() => { loaderRef.current = loader })
   const reload = useCallback(async () => {
-    setState((s) => ({ ...s, loading: true, error: '' }))
+    const id = ++generation.current.value
+    setState(previous => ({ ...previous, loading: true, error: '' }))
     try {
-      const data = await load()
-      setState({ data, loading: false, error: '' })
-    } catch (e) {
-      setState((s) => ({ ...s, loading: false, error: e.message }))
+      const data = await loaderRef.current()
+      if (id === generation.current.value) setState({ data, loading: false, error: '' })
+    } catch (error) {
+      if (id === generation.current.value) setState(previous => ({ ...previous, loading: false, error: error.message }))
     }
-  }, [load])
-
+  }, [])
   useEffect(() => {
-    let cancelled = false
-    load()
-      .then((data) => !cancelled && setState({ data, loading: false, error: '' }))
-      .catch((e) => !cancelled && setState({ data: null, loading: false, error: e.message }))
-    return () => {
-      cancelled = true
-    }
-  }, [load])
-
+    const tracker = generation.current
+    void reload()
+    return () => { tracker.value++ }
+  }, [reload, queryKey])
   return { ...state, reload }
 }

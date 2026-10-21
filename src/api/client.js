@@ -20,9 +20,11 @@ export const sessionStore = {
 }
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, details = {}, code = '') {
     super(message)
     this.status = status
+    this.details = details
+    this.code = code
   }
 }
 
@@ -30,6 +32,11 @@ const MESSAGES = {
   'Invalid email or password': 'Email hoặc mật khẩu không đúng',
   'Authentication required': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
   'Access denied': 'Bạn không có quyền thực hiện thao tác này',
+  'Account is disabled': 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.',
+  'Email address has not been verified': 'Email chưa được xác minh. Hãy xác minh email trước khi đăng nhập.',
+  'Class has schedules with enrollments': 'Lớp có buổi đã được đăng ký, không thể xóa.',
+  'Schedule has enrollments': 'Buổi học đã có người đăng ký, không thể xóa.',
+  'Capacity cannot be lower than current enrollment count': 'Sĩ số không được nhỏ hơn số người đã đăng ký.',
   'Coach already has a schedule during this time': 'Coach đã có lịch dạy trong khung giờ này',
   'Room is already booked during this time': 'Phòng tập đã có lớp khác trong khung giờ này',
   'Start time must be before end time': 'Giờ bắt đầu phải trước giờ kết thúc',
@@ -39,15 +46,6 @@ const MESSAGES = {
   'Room is used by existing schedules': 'Phòng đang được dùng trong lịch học, không thể xóa',
   'Class still has schedules, delete them first': 'Lớp vẫn còn lịch học, cần xóa lịch trước',
   'Invalid request data': 'Dữ liệu không hợp lệ',
-  'Class session is full': 'Lớp đã đủ số lượng, vui lòng chọn buổi hoặc lớp khác',
-  'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này',
-  'Class session has already started': 'Buổi học đã bắt đầu, không thể đăng ký hoặc hủy',
-  'Membership package is expired or does not cover this class session': 'Gói tập đã hết hạn hoặc không có hiệu lực vào ngày học. Vui lòng gia hạn trước khi đăng ký',
-  'Membership package is currently inactive': 'Gói tập hiện không còn được mở bán',
-  'Payment is already completed': 'Khoản thanh toán này đã được xác nhận',
-  'Cannot complete a cancelled payment': 'Không thể xác nhận khoản thanh toán đã hủy',
-  'Member not found': 'Không tìm thấy hội viên',
-  'User is not a member': 'Tài khoản không phải hội viên',
   'Payment is already completed': 'Giao dịch này đã được thu rồi',
   'Cannot complete a cancelled payment': 'Giao dịch đã hủy, không thể xác nhận',
   'Cannot cancel an already completed payment': 'Giao dịch đã thu, không thể hủy',
@@ -83,6 +81,8 @@ const FIELD_NAMES = {
 
 const translate = (data, status) => {
   const msg = data?.message
+  if (msg?.startsWith('Room code already exists')) return 'Mã phòng đã được sử dụng.'
+  if (msg?.startsWith('Class code already exists')) return 'Mã lớp đã được sử dụng.'
   if (msg?.startsWith('Email already exists')) return 'Email đã được sử dụng'
   if (msg?.startsWith('Username already exists') || msg?.toLowerCase().includes('user name')) {
     return 'Tên đăng nhập đã được sử dụng'
@@ -97,7 +97,7 @@ const translate = (data, status) => {
   return `Có lỗi xảy ra (mã ${status})`
 }
 
-export async function api(path, { method = 'GET', body } = {}) {
+export async function api(path, { method = 'GET', body, signal } = {}) {
   const session = sessionStore.get()
   const headers = { 'Content-Type': 'application/json' }
   if (session?.token) headers.Authorization = 'Bearer ' + session.token
@@ -108,8 +108,10 @@ export async function api(path, { method = 'GET', body } = {}) {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20000)]) : AbortSignal.timeout(20000),
     })
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) throw err
     throw new ApiError(`Không kết nối được Back-End (${API_URL}). Hãy kiểm tra Back-End đã chạy chưa.`, 0)
   }
 
@@ -123,10 +125,11 @@ export async function api(path, { method = 'GET', body } = {}) {
   }
 
   if (!res.ok) {
-    if (res.status === 401 && session?.token) {
+    if (res.status === 401 && session?.token && sessionStore.get()?.token === session.token && path !== '/auth/login') {
       window.dispatchEvent(new Event('gm:unauthorized'))
     }
-    throw new ApiError(translate(data, res.status), res.status)
+    throw new ApiError(translate(data, res.status), res.status, data?.errors || {}, data?.code || '')
   }
+  if (typeof data === 'string' && /<(!doctype|html)/i.test(data)) throw new ApiError('Địa chỉ API trả về HTML. Kiểm tra cấu hình proxy.', 0)
   return data
 }
