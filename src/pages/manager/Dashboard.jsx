@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { ErrorBox, MockBadge } from '../../components/Status'
+import { ErrorBox, MockBadge, Loading } from '../../components/Status'
 import { classApi, coachApi, packageApi, paymentApi, roomApi, scheduleApi } from '../../api/services'
 import BarChart from '../../components/BarChart'
 import { Delta, ShareList } from '../../components/Revenue'
-import { ErrorBox, Loading } from '../../components/Status'
-import { paymentApi } from '../../api/services'
 import useApi from '../../api/useApi'
+import { useStore } from '../../store/context'
 import {
   addDays,
   addMonths,
@@ -13,10 +12,12 @@ import {
   formatDate,
   formatDateTime,
   formatMoney,
+  getMembershipStatus,
   groupSum,
   nowVN,
   PAYMENT_METHOD,
   sumAmount,
+  todayISO,
   vnDate,
   vnMonth,
 } from '../../store/utils'
@@ -24,32 +25,38 @@ import {
 export default function Dashboard({ goTo }) {
   const { members, memberships } = useStore()
   const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7))
-  const { data, error, reload } = useApi(() =>
-    Promise.all([classApi.list(), roomApi.list(), coachApi.list(), packageApi.list(), scheduleApi.list(), paymentApi.list()]).then(
-      ([classes, rooms, coaches, packages, schedules, payments]) => ({ classes, rooms, coaches, packages, schedules, payments }),
-    ),
+
+  const { data, error, reload, loading } = useApi(() =>
+    Promise.all([
+      classApi.list(),
+      roomApi.list(),
+      coachApi.list(),
+      packageApi.list(),
+      scheduleApi.list(),
+      paymentApi.list(),
+    ]).then(([classes, rooms, coaches, packages, schedules, payments]) => ({
+      classes,
+      rooms,
+      coaches,
+      packages,
+      schedules,
+      payments,
+    })),
   )
+
+  if (loading && !data) return <Loading />
+
+  const payments = data?.payments || []
+  const done = completedPayments(payments)
   const activeMembers = members.filter((m) => getMembershipStatus(m.email, memberships).status === 'active')
-  const periodPayments = (data?.payments || []).filter((payment) => {
+
+  // Xử lý kỳ báo cáo (revenue theo period)
+  const periodPayments = payments.filter((payment) => {
     if (payment.status !== 'COMPLETED') return false
     return period === 'all' || (payment.completedAt || payment.createdAt || '').slice(0, 7) === period
   })
   const revenue = periodPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
-  const recent = [...periodPayments].sort((a, b) => (b.completedAt || b.createdAt).localeCompare(a.completedAt || a.createdAt)).slice(0, 5)
-  const upcoming = (data?.schedules || []).filter((s) => s.startTime.slice(0, 10) >= todayISO()).length
-  const v = (x) => (data ? x : '…')
-  const monthOptions = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - index)
-    const value = date.toISOString().slice(0, 7)
-    return { value, label: date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) }
-  })
-  const { data: payments, loading, error, reload } = useApi(() => paymentApi.list())
 
-  if (loading && !payments) return <Loading />
-  if (!payments) return <ErrorBox error={error} onRetry={reload} />
-
-  const done = completedPayments(payments)
   const now = nowVN()
   const today = now.slice(0, 10)
   const month = now.slice(0, 7)
@@ -64,16 +71,26 @@ export default function Dashboard({ goTo }) {
   const cancelled = payments.filter((p) => p.status === 'CANCELLED' || p.status === 'FAILED')
   const payingMembers = new Set(done.map((p) => p.memberId)).size
 
-  // 30 ngày gần nhất (kể cả hôm nay)
+  const upcoming = (data?.schedules || []).filter((s) => s.startTime.slice(0, 10) >= todayISO()).length
+  const v = (x) => (data ? x : '…')
+
+  const monthOptions = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date()
+    date.setMonth(date.getMonth() - index)
+    const value = date.toISOString().slice(0, 7)
+    return { value, label: date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) }
+  })
+
+  // Biểu đồ 30 ngày gần nhất
   const days = Array.from({ length: 30 }, (_, i) => addDays(today, i - 29))
   const byDay = groupSum(done, (p) => vnDate(p.completedAt))
   const chart = days.map((d) => {
-    const v = byDay.find((x) => x.key === d)
+    const found = byDay.find((x) => x.key === d)
     return {
       key: d,
       label: formatDate(d).slice(0, 5),
-      value: v?.amount || 0,
-      title: `${formatDate(d)}: ${formatMoney(v?.amount || 0)} (${v?.count || 0} giao dịch)`,
+      value: found?.amount || 0,
+      title: `${formatDate(d)}: ${formatMoney(found?.amount || 0)} (${found?.count || 0} giao dịch)`,
     }
   })
   const last30 = sumAmount(done.filter((p) => vnDate(p.completedAt) >= days[0]))
@@ -90,21 +107,50 @@ export default function Dashboard({ goTo }) {
       </div>
 
       <div className="stats">
-        <div className="stat"><span>Lớp học</span><strong>{v(data?.classes.length)}</strong><em>{v(upcoming)} buổi sắp tới</em></div>
-        <div className="stat"><span>Huấn luyện viên</span><strong>{v(data?.coaches.length)}</strong><em>{v(data?.rooms.length)} phòng tập</em></div>
-        <div className="stat"><span>Hội viên <MockBadge /></span><strong>{members.length}</strong><em>{activeMembers.length} đang hoạt động</em></div>
+        <div className="stat">
+          <span>Lớp học</span>
+          <strong>{v(data?.classes.length)}</strong>
+          <em>{v(upcoming)} buổi sắp tới</em>
+        </div>
+        <div className="stat">
+          <span>Huấn luyện viên</span>
+          <strong>{v(data?.coaches.length)}</strong>
+          <em>{v(data?.rooms.length)} phòng tập</em>
+        </div>
+        <div className="stat">
+          <span>Hội viên <MockBadge /></span>
+          <strong>{members.length}</strong>
+          <em>{activeMembers.length} đang hoạt động</em>
+        </div>
         <div className="stat">
           <span>Thực thu theo kỳ</span>
           <strong>{data ? formatMoney(revenue) : '…'}</strong>
           <em>{periodPayments.length} giao dịch đã thanh toán</em>
-          <label className="small muted" htmlFor="revenue-period">Kỳ báo cáo</label>
-          <select id="revenue-period" value={period} onChange={(event) => setPeriod(event.target.value)}>
-            {monthOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            <option value="all">Toàn thời gian</option>
-          </select>
-        <div className="stat"><span>Thực thu hôm nay</span><strong>{formatMoney(todayRevenue)}</strong><em>{formatDate(today)}</em></div>
-        <div className="stat"><span>Thực thu tháng này</span><strong>{formatMoney(monthRevenue)}</strong><Delta cur={monthRevenue} prev={prevRevenue} /></div>
-        <div className="stat"><span>Tổng thực thu</span><strong>{formatMoney(totalRevenue)}</strong><em>{done.length} giao dịch · {payingMembers} hội viên</em></div>
+          <div style={{ marginTop: '6px' }}>
+            <label className="small muted" htmlFor="revenue-period" style={{ display: 'block', marginBottom: '2px' }}>Kỳ báo cáo</label>
+            <select id="revenue-period" value={period} onChange={(event) => setPeriod(event.target.value)} style={{ width: '100%' }}>
+              {monthOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+              <option value="all">Toàn thời gian</option>
+            </select>
+          </div>
+        </div>
+        <div className="stat">
+          <span>Thực thu hôm nay</span>
+          <strong>{formatMoney(todayRevenue)}</strong>
+          <em>{formatDate(today)}</em>
+        </div>
+        <div className="stat">
+          <span>Thực thu tháng này</span>
+          <strong>{formatMoney(monthRevenue)}</strong>
+          <Delta cur={monthRevenue} prev={prevRevenue} />
+        </div>
+        <div className="stat">
+          <span>Tổng thực thu</span>
+          <strong>{formatMoney(totalRevenue)}</strong>
+          <em>{done.length} giao dịch · {payingMembers} hội viên</em>
+        </div>
         <div className="stat stat-warn">
           <span>Chờ thu (chưa tính)</span>
           <strong>{formatMoney(sumAmount(pending))}</strong>
@@ -132,24 +178,6 @@ export default function Dashboard({ goTo }) {
       </div>
 
       <div className="card">
-        <div className="card-head">
-          <h3>Khoản thu đã xác nhận gần đây</h3>
-        </div>
-        {recent.length === 0 ? (
-          <p className="muted">{data ? 'Chưa có khoản thu trong kỳ.' : 'Đang tải giao dịch...'}</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr><th>Số HĐ</th><th>Hội viên</th><th>Gói</th><th>Trạng thái</th><th>Ngày thu</th><th className="right">Số tiền</th></tr>
-            </thead>
-            <tbody>
-              {recent.map((p) => (
-                <tr key={p.paymentId}>
-                  <td>{p.invoiceCode}</td>
-                  <td>{p.memberName || `Hội viên #${p.memberId}`}</td>
-                  <td>{p.packageName}</td>
-                  <td>Đã thanh toán</td>
-                  <td>{formatDate(p.completedAt || p.createdAt)}</td>
         <div className="card-head row-between">
           <h3>Khoản thu gần đây</h3>
           <button className="btn btn-sm" onClick={() => goTo('reports')}>Xem báo cáo tháng →</button>
@@ -158,15 +186,24 @@ export default function Dashboard({ goTo }) {
           <p className="muted">Chưa có khoản thu nào.</p>
         ) : (
           <table className="table">
-            <thead><tr><th>Mã hóa đơn</th><th>Hội viên</th><th>Gói</th><th>Hình thức</th><th>Thời điểm thu</th><th className="right">Số tiền</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Mã hóa đơn</th>
+                <th>Hội viên</th>
+                <th>Gói</th>
+                <th>Hình thức</th>
+                <th>Thời điểm thu</th>
+                <th className="right">Số tiền</th>
+              </tr>
+            </thead>
             <tbody>
               {recent.map((p) => (
                 <tr key={p.paymentId}>
                   <td className="mono">{p.invoiceCode}</td>
-                  <td>{p.memberName}</td>
+                  <td>{p.memberName || `Hội viên #${p.memberId}`}</td>
                   <td>{p.packageName}</td>
                   <td>{PAYMENT_METHOD[p.paymentMethod] || p.paymentMethod}</td>
-                  <td>{formatDateTime(p.completedAt)}</td>
+                  <td>{formatDateTime(p.completedAt || p.createdAt)}</td>
                   <td className="right">{formatMoney(p.amount)}</td>
                 </tr>
               ))}

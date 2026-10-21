@@ -106,6 +106,14 @@ export const groupSum = (list, keyFn) => {
   return [...map.values()].sort((a, b) => b.amount - a.amount)
 }
 
+export function getMembershipStatus(email, memberships = []) {
+  const userMemberships = memberships.filter((m) => m.email === email)
+  const active = userMemberships.find((m) => m.active)
+  if (active) return { status: 'active', label: 'Đang hoạt động' }
+  if (userMemberships.length > 0) return { status: 'expired', label: 'Hết hạn' }
+  return { status: 'none', label: 'Chưa có gói' }
+}
+
 export const nextStartDate = (memberships) => {
   const today = todayISO()
   const ends = (memberships || []).map((m) => m.endDate).filter((d) => d && d >= today).sort()

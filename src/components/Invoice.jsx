@@ -1,20 +1,31 @@
-import { formatDateTime, formatMoney, INVOICE_STATUS, PAYMENT_METHOD } from '../store/utils'
+import { formatDateTime, formatMoney, INVOICE_STATUS, PAYMENT_METHOD, formatDate } from '../store/utils'
+import { useStore } from '../store/context'
 
-export default function Invoice({ payment }) {
-  const { members } = useStore()
-  const member = members.find((m) => m.email === payment.email)
-  const invoiceNo = payment.invoiceCode || payment.invoiceNo
-  const issuedAt = payment.createdAt || payment.date
-  const memberName = payment.memberName || member?.fullName || payment.email || `Hội viên #${payment.memberId}`
-  const paymentMethod = payment.paymentMethod || payment.method
-  const channel = payment.channel
-  const startDate = payment.startDate
-  const endDate = payment.endDate
 export default function Invoice({ invoice, payment }) {
-  const status = INVOICE_STATUS[invoice.status] || { label: invoice.status, badge: 'badge-gray' }
+  const { members } = useStore?.() || { members: [] }
+  
+  // Tổng hợp dữ liệu linh hoạt từ invoice, payment hoặc store
+  const targetPayment = payment || invoice?.payment || {}
+  const targetInvoice = invoice || payment || {}
+
+  const member = members.find((m) => m.email === targetPayment.email || m.memberId === targetInvoice.memberId)
+  
+  const invoiceNo = targetInvoice.invoiceCode || targetInvoice.invoiceNo || targetPayment.invoiceCode || '—'
+  const issuedAt = targetInvoice.issuedAt || targetInvoice.createdAt || targetPayment.createdAt || targetPayment.date
+  const memberName = targetInvoice.memberName || member?.fullName || targetPayment.memberName || targetPayment.email || `Hội viên #${targetInvoice.memberId || targetPayment.memberId || ''}`
+  const memberId = targetInvoice.memberId || targetPayment.memberId
+  const packageName = targetInvoice.packageName || targetPayment.packageName
+  const paymentMethod = targetPayment.paymentMethod || targetPayment.method || targetInvoice.paymentMethod
+  const channel = targetPayment.channel
+  const startDate = targetPayment.startDate
+  const endDate = targetPayment.endDate
+  
+  const statusKey = targetInvoice.status || targetPayment.status || 'COMPLETED'
+  const status = INVOICE_STATUS[statusKey] || { label: statusKey === 'COMPLETED' ? 'Đã thanh toán' : statusKey, badge: 'badge-green' }
+  const amount = targetInvoice.amount || targetPayment.amount || 0
 
   return (
-    <div className="invoice print-area">
+    <div className="invoice print-area" id="invoice">
       <div className="invoice-head">
         <div>
           <div className="brand-text">GymMaster</div>
@@ -23,36 +34,85 @@ export default function Invoice({ invoice, payment }) {
         <div className="right">
           <div className="invoice-title">HÓA ĐƠN</div>
           <div className="muted small">Số: {invoiceNo}</div>
-          <div className="muted small">Ngày: {formatDate(issuedAt)}</div>
-          <div className="muted small">Số: {invoice.invoiceCode}</div>
-          <div className="muted small">Ngày lập: {formatDateTime(invoice.issuedAt)}</div>
+          <div className="muted small">Ngày: {issuedAt ? formatDate(issuedAt) : '—'}</div>
         </div>
       </div>
+
       <table className="table invoice-table">
         <tbody>
-          <tr><td>Hội viên</td><td>{memberName}</td></tr>
-          {member?.phone && <tr><td>Số điện thoại</td><td>{member.phone}</td></tr>}
-          {payment.email && <tr><td>Email</td><td>{payment.email}</td></tr>}
-          <tr><td>Gói tập</td><td>{payment.packageName}</td></tr>
-          {startDate && endDate && <tr><td>Thời hạn</td><td>{formatDate(startDate)} → {formatDate(endDate)}</td></tr>}
-          <tr><td>Hình thức</td><td>{paymentMethod}{channel ? ` (${channel})` : ''}</td></tr>
-          {payment.staffName && <tr><td>Nhân viên thu</td><td>{payment.staffName}</td></tr>}
-          {payment.status && <tr><td>Trạng thái</td><td>{payment.status === 'COMPLETED' ? 'Đã thanh toán' : payment.status}</td></tr>}
-          <tr><td>Hội viên</td><td>{invoice.memberName || '#' + invoice.memberId}</td></tr>
-          <tr><td>Mã hội viên</td><td>#{invoice.memberId}</td></tr>
-          <tr><td>Gói tập</td><td>{invoice.packageName || '#' + invoice.packageId}</td></tr>
-          {payment && <tr><td>Hình thức</td><td>{PAYMENT_METHOD[payment.paymentMethod] || payment.paymentMethod}</td></tr>}
-          {payment?.paymentCode && <tr><td>Mã giao dịch</td><td>{payment.paymentCode}</td></tr>}
-          <tr><td>Trạng thái</td><td><span className={'badge ' + status.badge}>{status.label}</span></td></tr>
-          {invoice.paidAt && <tr><td>Thời điểm thu</td><td>{formatDateTime(invoice.paidAt)}</td></tr>}
-          {invoice.note && <tr><td>Ghi chú</td><td>{invoice.note}</td></tr>}
+          <tr>
+            <td>Hội viên</td>
+            <td><strong>{memberName}</strong></td>
+          </tr>
+          {memberId && (
+            <tr>
+              <td>Mã hội viên</td>
+              <td>#{memberId}</td>
+            </tr>
+          )}
+          {member?.phone && (
+            <tr>
+              <td>Số điện thoại</td>
+              <td>{member.phone}</td>
+            </tr>
+          )}
+          {targetPayment.email && (
+            <tr>
+              <td>Email</td>
+              <td>{targetPayment.email}</td>
+            </tr>
+          )}
+          <tr>
+            <td>Gói tập</td>
+            <td>{packageName || '—'}</td>
+          </tr>
+          {startDate && endDate && (
+            <tr>
+              <td>Thời hạn</td>
+              <td>{formatDate(startDate)} → {formatDate(endDate)}</td>
+            </tr>
+          )}
+          <tr>
+            <td>Hình thức</td>
+            <td>{PAYMENT_METHOD[paymentMethod] || paymentMethod || 'Tiền mặt'}{channel ? ` (${channel})` : ''}</td>
+          </tr>
+          {targetPayment?.paymentCode && (
+            <tr>
+              <td>Mã giao dịch</td>
+              <td>{targetPayment.paymentCode}</td>
+            </tr>
+          )}
+          {targetPayment.staffName && (
+            <tr>
+              <td>Nhân viên thu</td>
+              <td>{targetPayment.staffName}</td>
+            </tr>
+          )}
+          <tr>
+            <td>Trạng thái</td>
+            <td><span className={'badge ' + (status.badge || 'badge-green')}>{status.label || 'Đã thanh toán'}</span></td>
+          </tr>
+          {(targetInvoice.paidAt || targetPayment.completedAt) && (
+            <tr>
+              <td>Thời điểm thu</td>
+              <td>{formatDateTime(targetInvoice.paidAt || targetPayment.completedAt)}</td>
+            </tr>
+          )}
+          {targetInvoice.note && (
+            <tr>
+              <td>Ghi chú</td>
+              <td>{targetInvoice.note}</td>
+            </tr>
+          )}
         </tbody>
       </table>
+
       <div className="invoice-total">
-        <span>{invoice.status === 'PAID' ? 'Đã thanh toán' : 'Tổng tiền'}</span>
-        <strong>{formatMoney(invoice.amount)}</strong>
+        <span>{statusKey === 'PAID' || statusKey === 'COMPLETED' ? 'Đã thanh toán' : 'Tổng tiền'}</span>
+        <strong>{formatMoney(amount)}</strong>
       </div>
-      <p className="muted small center">Cảm ơn quý khách đã tin tưởng GymMaster!</p>
+
+      <p className="muted small center" style={{ marginTop: '16px' }}>Cảm ơn quý khách đã tin tưởng GymMaster!</p>
     </div>
   )
 }
