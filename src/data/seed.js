@@ -2,6 +2,7 @@
 // Mật khẩu mặc định của mọi tài khoản demo: 123456
 
 export const ROLES = {
+  admin: 'Admin',
   manager: 'Center Manager',
   receptionist: 'Receptionist',
   coach: 'Coach',
@@ -18,6 +19,7 @@ const today = todayISO()
 
 export const seedData = {
   users: [
+    { id: 'u0', role: 'admin', name: 'Admin System', email: 'admin@gym.vn', password: '123456', phone: '0900000000' },
     { id: 'u1', role: 'manager', name: 'Trần Quốc Bảo', email: 'manager@gym.vn', password: '123456', phone: '0901000001' },
     { id: 'u2', role: 'receptionist', name: 'Lê Thu Hà', email: 'letan@gym.vn', password: '123456', phone: '0901000002' },
     { id: 'u3', role: 'coach', name: 'Nguyễn Văn Minh', email: 'coach@gym.vn', password: '123456', phone: '0901000003', specialty: 'Gym, Boxing' },

@@ -1,4 +1,5 @@
-﻿import { usePreferences } from '../../preferences/context'
+import { usePreferences } from '../../preferences/context'
+import { useStore } from '../../store/context'
 import { useState } from 'react'
 import Modal from '../../components/Modal'
 import { ErrorBox, Loading } from '../../components/Status'

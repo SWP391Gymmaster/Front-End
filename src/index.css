@@ -552,3 +552,74 @@ button, input, select, textarea { transition: background .18s, border-color .18s
 @media (max-width: 900px) { .member-summary-grid { grid-template-columns: 1fr 1fr; } .member-summary-grid > :last-child { grid-column: 1 / -1; } }
 @media (max-width: 600px) { .membership-notice { flex-wrap: wrap; } .membership-notice > div { flex: 1; min-width: 180px; } .membership-notice > .btn { margin: 0; } .section-intro h2 { font-size: 22px; } .member-tabs { gap: 3px; } .member-tabs button { font-size: 11px; padding: 9px; } .session-filters label { min-width: 0; flex: 1; } .member-steps { gap: 12px; } .member-steps li { font-size: 10px; } }
 .api-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+
+/* ---------- Admin Dashboard ---------- */
+.admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+.role-summary { display: flex; flex-direction: column; gap: 14px; }
+.role-summary-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: var(--bg); }
+.role-emoji { font-size: 22px; flex-shrink: 0; }
+.role-summary-item > div:first-of-type { min-width: 70px; }
+.role-summary-item strong { display: block; font-size: 20px; font-weight: 700; letter-spacing: -.5px; }
+.role-summary-item > div:first-of-type > span { font-size: 11px; color: var(--muted); }
+.role-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
+.role-bar-fill { height: 100%; background: var(--primary); border-radius: 6px; transition: width .4s ease; }
+.admin-info-cards { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.admin-info-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+.admin-info-card > svg { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
+.admin-info-card strong { display: block; font-size: 12px; margin-bottom: 4px; }
+.admin-info-card p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.7; }
+@media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Staff Management ---------- */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 12px 0; }
+.field-error { color: var(--danger); font-size: 11px; font-weight: 400; margin-top: 2px; }
+.danger { color: var(--danger); }
+.admin-role-info { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 9px; background: var(--info-soft); color: var(--info); font-size: 11px; line-height: 1.6; }
+.admin-role-info > svg { flex-shrink: 0; }
+
+/* ---------- Badge Variants ---------- */
+.badge-amber { background: #fef3cd; color: #856404; }
+.badge-blue { background: var(--info-soft); color: var(--info); }
+:root[data-theme='dark'] .badge-amber { background: #4a3f1f; color: #f6d97a; }
+:root[data-theme='dark'] .badge-blue { background: var(--info-soft); color: var(--info); }
+
+/* ---------- Package Section Titles ---------- */
+.pkg-section-title { font-size: 15px; font-weight: 600; margin: 4px 0 -6px; color: var(--text); }
+
+/* ---------- Checkout Flow ---------- */
+.checkout-steps { display: flex; align-items: center; justify-content: center; gap: 0; padding: 8px 0; }
+.checkout-step { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.checkout-step.active { color: var(--primary-dark); font-weight: 600; }
+.checkout-step.done { color: var(--primary); }
+.checkout-step-num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--border); font-size: 12px; font-weight: 700; background: var(--surface); }
+.checkout-step.active .checkout-step-num { border-color: var(--primary); background: var(--primary); color: #fff; }
+.checkout-step.done .checkout-step-num { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.checkout-step-line { width: 48px; height: 2px; background: var(--border); margin: 0 12px; }
+.checkout-step-line.active { background: var(--primary); }
+
+.checkout-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; }
+.checkout-main { display: flex; flex-direction: column; gap: 18px; }
+.checkout-sidebar { position: sticky; top: 20px; }
+@media (max-width: 900px) { .checkout-layout { grid-template-columns: 1fr; } .checkout-sidebar { position: static; } }
+
+.checkout-pkg { transition: transform .15s, box-shadow .15s; }
+.checkout-pkg:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.08); }
+
+.payment-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.payment-method-card { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; cursor: pointer; transition: border-color .15s, background .15s; font-size: 13px; font-weight: 500; }
+.payment-method-card:hover { border-color: var(--primary); background: var(--primary-soft); }
+.payment-method-card.selected { border-color: var(--primary); background: var(--primary-soft); }
+.payment-method-card input[type='radio'] { accent-color: var(--primary); flex-shrink: 0; }
+.payment-method-icon { font-size: 20px; }
+.payment-method-label { flex: 1; }
+@media (max-width: 600px) { .payment-methods { grid-template-columns: 1fr; } }
+
+/* ---------- Checkout Result ---------- */
+.checkout-result { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; padding: 32px 20px; }
+.checkout-result-icon { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; font-weight: 700; }
+.checkout-result-icon.success { background: var(--primary-soft); color: var(--primary); }
+.checkout-result-icon.failed { background: var(--danger-soft); color: var(--danger); }
+.checkout-result-icon.cancelled { background: #eef1ef; color: var(--muted); }
+.checkout-result h2 { font-size: 24px; letter-spacing: -.5px; }
+.checkout-result > p { max-width: 440px; font-size: 13px; line-height: 1.7; }
+.checkout-result-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
