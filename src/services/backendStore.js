@@ -133,8 +133,8 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
   }
   const memberService = {
     // Register.jsx gọi hàm này: chuyển name thành fullName theo DTO BE.
-    // Tham số true bật newMember; BE quyết định role.
-    register: data => authenticate('register', { userName: data.userName.trim(), fullName: data.name.trim(), email: data.email.trim(), password: data.password, phone: data.phone }, true),
+    // New BE returns pending verification, not JWT; registration does not log in.
+    register: data => api.register({ userName: data.userName.trim(), fullName: data.name.trim(), email: data.email.trim(), password: data.password, phone: data.phone }),
     async getOverview() {
       const version = generation
       if (snapshot.currentUser?.role !== 'member') throw new Error('Vui lòng đăng nhập bằng tài khoản hội viên.')
@@ -179,9 +179,9 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     savePackage: pkg => save('packages', 'packages', pkg, packagePayload(pkg), mapPackage),
     togglePackage: id => { const pkg = snapshot.packages.find(p => p.id === id); return save('packages', 'packages', pkg, packagePayload({ ...pkg, active: !pkg.active }), mapPackage) },
     deletePackage: id => remove('packages', 'packages', id),
-    saveRoom: room => save('rooms', 'rooms', room, { name: room.name.trim(), capacity: Number(room.capacity) }),
+    saveRoom: room => save('rooms', 'rooms', room, { roomCode: room.roomCode?.trim(), name: room.name.trim(), capacity: Number(room.capacity), type: room.type }),
     deleteRoom: id => remove('rooms', 'rooms', id),
-    saveClass: cls => save('classes', 'classes', cls, { name: cls.name.trim(), subject: cls.subject, description: cls.description || '', capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null }),
+    saveClass: cls => save('classes', 'classes', cls, { classCode: cls.classCode?.trim(), name: cls.name.trim(), subject: cls.subject, description: cls.description || '', capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null }),
     deleteClass: id => remove('classes', 'classes', id),
     saveSchedule: schedule => save('schedules', 'schedules', schedule, { classId: Number(schedule.classId), roomId: Number(schedule.roomId), coachId: schedule.coachId ? Number(schedule.coachId) : null, startTime: schedule.startTime, endTime: schedule.endTime }),
     deleteSchedule: id => remove('schedules', 'schedules', id),

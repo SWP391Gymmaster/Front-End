@@ -5,7 +5,7 @@ import { packageApi } from '../../api/services'
 import useApi from '../../api/useApi'
 import { formatMoney } from '../../store/utils'
 
-const EMPTY = { name: '', price: '', durationDays: 30, description: '', active: true }
+const EMPTY = { packageCode: '', name: '', price: '', durationDays: 30, description: '', active: true }
 
 export default function Packages() {
   const { data: packages, loading, error, reload } = useApi(() => packageApi.list())
@@ -21,11 +21,12 @@ export default function Packages() {
     setSaving(true)
     setFormError('')
     const body = {
+      packageCode: editing.packageCode.trim(),
       name: editing.name,
       description: editing.description,
       price: Number(editing.price),
       durationDays: Number(editing.durationDays),
-      active: editing.active,
+      status: editing.active ? 'ACTIVE' : 'SUSPENDED',
     }
     try {
       if (editing.id) await packageApi.update(editing.id, body)
@@ -42,7 +43,7 @@ export default function Packages() {
 
   const toggle = async (p) => {
     try {
-      await packageApi.update(p.id, { ...p, active: !p.active })
+      await packageApi.update(p.id, { packageCode: p.packageCode, name: p.name, description: p.description, price: p.price, durationDays: p.durationDays, status: p.active ? 'SUSPENDED' : 'ACTIVE' })
       setNotice(`${p.active ? 'Đã tạm ngưng' : 'Đã mở bán'} "${p.name}"`)
       reload()
     } catch (err) {
@@ -90,6 +91,7 @@ export default function Packages() {
       {editing && (
         <Modal title={editing.id ? 'Sửa gói thành viên' : 'Tạo gói thành viên'} onClose={() => setEditing(null)}>
           <form className="form" onSubmit={submit}>
+            <label>Mã gói<input value={editing.packageCode || ''} onChange={set('packageCode')} required maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9_-]*" placeholder="PKG-GOLD-1M" /></label>
             <label>
               Tên gói
               <input value={editing.name} onChange={set('name')} required placeholder="VD: Gói 6 tháng" />

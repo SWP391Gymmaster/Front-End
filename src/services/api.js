@@ -112,8 +112,8 @@ export function createControllerApi(request) {
     cancel: id => request(`/api/member/class-sessions/${encodeURIComponent(id)}/enrollment`, { method: 'DELETE' }),
   }
 }
-export const mapPackage = p => ({ ...p, days: p.durationDays })
-export const packagePayload = p => ({ name: p.name.trim(), description: p.description || '', price: Number(p.price), durationDays: Number(p.days), active: Boolean(p.active) })
+export const mapPackage = p => ({ ...p, days: p.durationDays, active: p.status ? p.status === 'ACTIVE' : p.active })
+export const packagePayload = p => ({ packageCode: p.packageCode?.trim(), name: p.name.trim(), description: p.description || '', price: Number(p.price), durationDays: Number(p.days), status: p.active ? 'ACTIVE' : 'SUSPENDED' })
 export const mapUser = u => ({ id: u.userId ?? u.id, name: u.fullName, email: u.email, role: u.role.toLowerCase(), phone: u.phone || '' })
 export const vietnamTime = value => !value || /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}+07:00`
 export function mapSession(value, { classes = [], rooms = [], coaches = [], schedules = [] } = {}) {
@@ -128,6 +128,7 @@ export function mapSession(value, { classes = [], rooms = [], coaches = [], sche
     coachName: coaches.find(c => c.id === (value.coachId ?? schedule.coachId))?.name || '—',
     roomName: rooms.find(r => r.id === (value.roomId ?? schedule.roomId))?.name || '—',
     capacity: value.capacity ?? cls.capacity, registeredCount: value.registeredCount, remainingSlots: value.remainingSlots,
+    description: cls.description || '', classCode: cls.classCode || '',
     allowed: !value.registeredByMe && value.remainingSlots !== 0 && new Date(vietnamTime(startTime)) > new Date(),
     reason: value.registeredByMe ? 'Bạn đã đăng ký buổi học này.' : value.remainingSlots === 0 ? 'Buổi học đã đủ chỗ.' : '',
   }
