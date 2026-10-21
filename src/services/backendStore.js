@@ -12,7 +12,7 @@ export function validSession(session) {
   try {
     // JWT gồm header.payload.signature; payload dùng Base64URL, exp tính bằng giây.
     const payload = JSON.parse(atob(session.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-    return payload.exp * 1000 > Date.now() && session.user?.id && ['manager', 'member', 'coach', 'receptionist'].includes(session.user.role)
+    return payload.exp * 1000 > Date.now() && session.user?.id && ['admin', 'manager', 'member', 'coach', 'receptionist'].includes(session.user.role)
   } catch { return false }
 }
 export function createBackendStore({ baseUrl = '/backend', sessionStorage = globalThis.sessionStorage, localStorage = globalThis.localStorage, fetchImpl } = {}) {
@@ -179,7 +179,7 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
   return {
     getSnapshot: () => snapshot,
     subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
-    api, memberService, paymentService, refresh,
+    api, request, memberService, paymentService, refresh,
     // Login.jsx dùng hàm này: nhận hai tham số, trim email và xử lý toàn bộ phiên.
     // Khác api.login(body): hàm ở api.js chỉ gửi HTTP, không lưu user/token vào store.
     login: (email, password) => authenticate('login', { email: email.trim(), password }),

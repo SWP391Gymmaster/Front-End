@@ -10,13 +10,24 @@ import Packages from './pages/manager/Packages'
 import Rooms from './pages/manager/Rooms'
 import Classes from './pages/manager/Classes'
 import MemberHome from './pages/member/MemberHome'
-import BuyPackage from './pages/member/BuyPackage'
+import Checkout from './pages/member/Checkout'
 import MemberSchedule from './pages/member/MemberSchedule'
 import Profile from './pages/member/Profile'
 import CoachSchedule from './pages/coach/CoachSchedule'
 import Payments, { Invoices } from './pages/Payments'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import StaffManagement from './pages/admin/StaffManagement'
+import AdminPackages from './pages/admin/AdminPackages'
 
 const MENUS = {
+  admin: [
+    { key: 'dashboard', label: 'Bảng điều khiển', icon: '📊', el: AdminDashboard },
+    { key: 'staff', label: 'Quản lý nhân sự', icon: '👥', el: StaffManagement },
+    { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: AdminPackages },
+    { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
+    { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
+    { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
+  ],
   manager: [
     { key: 'dashboard', label: 'Tổng quan doanh thu', icon: '📊', el: ManagerDashboard },
     { key: 'reports', label: 'Báo cáo & Tiến độ', icon: '📈', el: Reports },
@@ -32,7 +43,7 @@ const MENUS = {
   ],
   member: [
     { key: 'home', label: 'Trang của tôi', icon: '🏠', el: MemberHome },
-    { key: 'buy', label: 'Gói tập', icon: '🎫', el: BuyPackage },
+    { key: 'buy', label: 'Gói tập', icon: '🎫', el: Checkout },
     { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
     { key: 'schedule', label: 'Lịch tập cá nhân', icon: '📅', el: MemberSchedule },
     { key: 'profile', label: 'Hồ sơ', icon: '👤', el: Profile },
@@ -60,7 +71,7 @@ export default function App() {
 
   if (!currentUser) return <AuthScreens />
 
-  const initialPage = MENUS[currentUser.role][0].key
+  const initialPage = MENUS[currentUser.role]?.[0]?.key || 'dashboard'
 
   return <RoleApp key={currentUser.id} user={currentUser} initialPage={initialPage} />
 }

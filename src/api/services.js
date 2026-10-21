@@ -57,3 +57,13 @@ export const memberPaymentApi = {
   invoice: (id) => api(`/api/member/invoices/${id}`),
   memberships: paymentApi.myMemberships,
 }
+
+export const adminApi = {
+  listUsers: (params = '') => api(`/api/admin/users${params ? '?' + params : ''}`),
+  getUser: (id) => api(`/api/admin/users/${id}`),
+  createUser: (data) => api('/api/admin/users', { method: 'POST', body: data }),
+  updateUser: (id, data) => api(`/api/admin/users/${id}`, { method: 'PATCH', body: data }),
+  setUserStatus: (id, enabled) => api(`/api/admin/users/${id}/status`, { method: 'PATCH', body: { enabled } }),
+  deactivateUser: (id) => api(`/api/admin/users/${id}`, { method: 'DELETE' }),
+  resendVerification: (id) => api(`/api/admin/users/${id}/verification-email`, { method: 'POST' }),
+}

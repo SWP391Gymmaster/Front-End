@@ -6,7 +6,7 @@ import PreferencesControls from './PreferencesControls'
 import Icon from './Icon'
 import Avatar from './Avatar'
 
-const icons = { dashboard: 'grid', packages: 'ticket', rooms: 'room', classes: 'calendar', counter: 'receipt', search: 'search', invoices: 'receipt', schedule: 'calendar', home: 'grid', buy: 'ticket', profile: 'user' }
+const icons = { dashboard: 'grid', packages: 'ticket', rooms: 'room', classes: 'calendar', counter: 'receipt', search: 'search', invoices: 'receipt', schedule: 'calendar', home: 'grid', buy: 'ticket', profile: 'user', staff: 'users', payments: 'receipt', reports: 'trend' }
 
 export default function Layout({ menu, page, setPage, children }) {
   const { currentUser, logout } = useStore()
