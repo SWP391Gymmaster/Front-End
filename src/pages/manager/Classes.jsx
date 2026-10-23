@@ -4,6 +4,8 @@ import { usePreferences } from '../../preferences/context'
 import EntityManager from '../../components/EntityManager'
 import { SUBJECTS } from '../../data/seed'
 import { formatDate } from '../../store/utils'
+import { roomMatchesSubject } from '../../validation/roomRules'
+import { validateClass, validateSchedule } from '../../validation/classRules'
 
 const buildSessions = (f) => {
   if (!f.days.length || f.start >= f.end || !f.fromDate) return []
@@ -25,15 +27,25 @@ export default function Classes() {
   const { classes, schedules, rooms, users, saveClass, deleteClass, saveSchedule, deleteSchedule, api } = useStore()
   const [filter, setFilter] = useState('')
   const coaches = users.filter(u => u.role === 'coach')
+    const byId = (list, id) => list.find(x => String(x.id) === String(id))
+  // Phòng mà lớp đang dùng trong lịch (để kiểm tra sĩ số/bộ môn khi sửa lớp)
+  const roomsOfClass = id => [...new Set(schedules.filter(s => String(s.classId) === String(id)).map(s => s.roomId))].map(r => byId(rooms, r)).filter(Boolean)
+  // Ô chọn phòng chỉ liệt kê phòng hợp với bộ môn của lớp đã chọn
+  const roomOptions = form => {
+    const cls = byId(classes, form.classId)
+    const list = cls ? rooms.filter(r => roomMatchesSubject(r, cls.subject) || String(r.id) === String(form.roomId)) : rooms
+    return [{ value: '', label: t('-- Chọn phòng --') }, ...list.map(r => ({ value: r.id, label: `${r.name} (${r.capacity} chỗ)` }))]
+  }
   const coachOptions = [{ value: '', label: t('Chưa phân công') }, ...coaches.map(u => ({ value: u.id, label: u.name }))]
   return <div className="stack"><div className="alert alert-info">{t('Tạo lớp trước, sau đó thêm từng buổi học với ngày và giờ cụ thể.')}</div>
-    <EntityManager title="Lớp học" createLabel="+ Tạo lớp mới" rows={classes} initial={{ name: '', subject: 'Gym', description: '', capacity: 15, coachId: '' }} load={api.classes.get} save={saveClass} remove={deleteClass}
+    <EntityManager title="Lớp học" createLabel="+ Tạo lớp mới" rows={classes} initial={{ classCode: '', name: '', subject: 'Gym', description: '', capacity: 15, coachId: '' }} load={api.classes.get} save={saveClass} remove={deleteClass}
       fields={[{ key: 'name', label: 'Tên lớp', required: true }, { key: 'subject', label: 'Bộ môn', options: SUBJECTS.map(s => ({ value: s, label: s })) }, { key: 'description', label: 'Mô tả', type: 'textarea' }, { key: 'capacity', label: 'Sĩ số tối đa', type: 'number', min: 1, step: 1, required: true }, { key: 'coachId', label: 'Huấn luyện viên', options: coachOptions }]}
       columns={[{ key: 'name', label: 'Lớp' }, { key: 'subject', label: 'Bộ môn' }, { key: 'coach', label: 'Huấn luyện viên', render: c => coaches.find(u => u.id === c.coachId)?.name || '—' }, { key: 'capacity', label: 'Sĩ số tối đa' }]} />
     <div className="form"><label>{t('Lọc theo lớp')}<select value={filter} onChange={e => setFilter(e.target.value)}><option value="">{t('Tất cả lớp')}</option>{classes.map(c => <option value={c.id} key={c.id}>{c.name}</option>)}</select></label></div>
     <EntityManager title="Buổi học theo ngày" createLabel="Thêm buổi học" rows={schedules.filter(s => !filter || s.classId === Number(filter)).sort((a, b) => a.startTime.localeCompare(b.startTime))} initial={{ classId: filter, roomId: '', coachId: '', startTime: '', endTime: '' }} load={api.schedules.get}
-      save={s => { if (s.startTime >= s.endTime) throw new Error('Giờ kết thúc phải sau giờ bắt đầu.'); return saveSchedule(s) }} remove={deleteSchedule}
-      fields={[{ key: 'classId', label: 'Lớp', required: true, options: [{ value: '', label: t('-- Chọn lớp --') }, ...classes.map(c => ({ value: c.id, label: c.name }))] }, { key: 'roomId', label: 'Phòng', required: true, options: [{ value: '', label: t('-- Chọn phòng --') }, ...rooms.map(r => ({ value: r.id, label: r.name }))] }, { key: 'coachId', label: 'Huấn luyện viên', options: [{ value: '', label: t('Theo huấn luyện viên của lớp') }, ...coachOptions.slice(1)] }, { key: 'startTime', label: 'Ngày giờ bắt đầu', type: 'datetime-local', required: true }, { key: 'endTime', label: 'Ngày giờ kết thúc', type: 'datetime-local', required: true }]}
-      columns={[{ key: 'class', label: 'Lớp', render: s => classes.find(c => c.id === s.classId)?.name || `#${s.classId}` }, { key: 'time', label: 'Lịch', render: s => `${formatDate(s.startTime)} ${s.startTime.slice(11, 16)} → ${formatDate(s.endTime)} ${s.endTime.slice(11, 16)}` }, { key: 'room', label: 'Phòng', render: s => rooms.find(r => r.id === s.roomId)?.name || '—' }, { key: 'coach', label: 'Huấn luyện viên', render: s => coaches.find(u => u.id === s.coachId)?.name || '—' }]} />
+      save={saveSchedule} remove={deleteSchedule}
+      validate={form => validateSchedule(form, byId(classes, form.classId), byId(rooms, form.roomId)).join(' ')}
+      fields={[{ key: 'classCode', label: 'Mã lớp (VD: CLS-YOGA-AM)', required: true },{ key: 'classId', label: 'Lớp', required: true, options: [{ value: '', label: t('-- Chọn lớp --') }, ...classes.map(c => ({ value: c.id, label: c.name }))] }, { key: 'roomId', label: 'Phòng (lọc theo bộ môn của lớp)', required: true, options: roomOptions }, { key: 'coachId', label: 'Huấn luyện viên', options: [{ value: '', label: t('Theo huấn luyện viên của lớp') }, ...coachOptions.slice(1)] }, { key: 'startTime', label: 'Ngày giờ bắt đầu', type: 'datetime-local', required: true }, { key: 'endTime', label: 'Ngày giờ kết thúc', type: 'datetime-local', required: true }]}
+      columns={[{ key: 'classCode', label: 'Mã lớp' },{ key: 'class', label: 'Lớp', render: s => classes.find(c => c.id === s.classId)?.name || `#${s.classId}` }, { key: 'time', label: 'Lịch', render: s => `${formatDate(s.startTime)} ${s.startTime.slice(11, 16)} → ${formatDate(s.endTime)} ${s.endTime.slice(11, 16)}` }, { key: 'room', label: 'Phòng', render: s => rooms.find(r => r.id === s.roomId)?.name || '—' }, { key: 'coach', label: 'Huấn luyện viên', render: s => coaches.find(u => u.id === s.coachId)?.name || '—' }]} />
   </div>
 }
