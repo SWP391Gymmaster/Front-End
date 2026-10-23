@@ -9,6 +9,7 @@ import Reports from './pages/manager/Reports'
 import Packages from './pages/manager/Packages'
 import Rooms from './pages/manager/Rooms'
 import Classes from './pages/manager/Classes'
+import ClassCatalog from './pages/ClassCatalog'
 import MemberHome from './pages/member/MemberHome'
 import Checkout from './pages/member/Checkout'
 import MemberSchedule from './pages/member/MemberSchedule'
@@ -34,6 +35,7 @@ const MENUS = {
     { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: Packages },
     { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
     { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
+    { key: 'catalog', label: 'Danh sách lớp', icon: '🗂️', el: ClassCatalog },
     { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
   ],
   receptionist: [
@@ -45,6 +47,7 @@ const MENUS = {
     { key: 'home', label: 'Trang của tôi', icon: '🏠', el: MemberHome },
     { key: 'buy', label: 'Gói tập', icon: '🎫', el: Checkout },
     { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
+    { key: 'catalog', label: 'Danh sách lớp', icon: '🗂️', el: ClassCatalog },
     { key: 'schedule', label: 'Lịch tập cá nhân', icon: '📅', el: MemberSchedule },
     { key: 'profile', label: 'Hồ sơ', icon: '👤', el: Profile },
   ],
