@@ -3,7 +3,7 @@ import { usePreferences } from '../preferences/context'
 import Modal from './Modal'
 
 // Shared create/edit/delete workflow for real controller resources.
-export default function EntityManager({ title, createLabel, rows, columns, initial, fields, load, save, remove }) {
+export default function EntityManager({ title, createLabel, rows, columns, initial, fields, load, save, remove, validate }) {
   const { t } = usePreferences()
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
@@ -17,6 +17,8 @@ export default function EntityManager({ title, createLabel, rows, columns, initi
   const submit = async event => {
     event.preventDefault()
     if (busy) return
+    const problem = validate?.(editing)
+    if (problem) { setError(problem); return }
     setBusy(true); setError('')
     try { await save(editing); setEditing(null); setNotice('Đã lưu thay đổi trên máy chủ.') }
     catch (err) { setError(err.message) } finally { setBusy(false) }
@@ -38,8 +40,9 @@ export default function EntityManager({ title, createLabel, rows, columns, initi
     </tbody></table></div>
     {editing && <Modal title={editing.id ? 'Sửa thông tin' : createLabel} onClose={() => { if (!busy) setEditing(null) }} width={640}>
       <form className="form" onSubmit={submit}><fieldset className="form api-fieldset" disabled={busy}>{fields.map(field => {
+        const options = typeof field.options === 'function' ? field.options(editing) : field.options
         const props = { value: editing[field.key] ?? '', required: field.required, onChange: e => setEditing({ ...editing, [field.key]: e.target.value }) }
-        return <label key={field.key}>{t(field.label)}{field.options ? <select {...props}>{field.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === 'textarea' ? <textarea {...props} rows={3} /> : <input {...props} type={field.type || 'text'} min={field.min} step={field.step} />}</label>
+        return <label key={field.key}>{t(field.label)}{options ? <select {...props}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === 'textarea' ? <textarea {...props} rows={3} /> : <input {...props} type={field.type || 'text'} min={field.min} step={field.step} />}</label>
       })}</fieldset>{error && <div className="alert alert-error" role="alert">{t(error)}</div>}<div className="form-actions"><button type="button" className="btn" disabled={busy} onClick={() => setEditing(null)}>{t('Hủy')}</button><button type="submit" className="btn btn-primary" disabled={busy}>{t(busy ? 'Đang xử lý...' : 'Lưu thay đổi')}</button></div></form>
     </Modal>}
     {deleting && <Modal title="Xác nhận xóa" onClose={() => { if (!busy) setDeleting(null) }}><div className="stack"><p>{t('Bạn muốn xóa mục này?')} <strong>{deleting.name || `#${deleting.id}`}</strong></p>{error && <div className="alert alert-error" role="alert">{t(error)}</div>}<div className="form-actions"><button className="btn" disabled={busy} onClick={() => setDeleting(null)}>{t('Hủy')}</button><button className="btn btn-primary" disabled={busy} onClick={destroy}>{t(busy ? 'Đang xử lý...' : 'Xóa')}</button></div></div></Modal>}
