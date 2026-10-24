@@ -10,12 +10,12 @@ export const ROOM_TYPES = [
 ]
 
 export const SUBJECT_ROOM_TYPES = {
-  Gym: ['GYM', 'CARDIO'],
+  Gym: ['GYM'],
   Yoga: ['YOGA'],
   Boxing: ['BOXING'],
-  Cardio: ['CARDIO', 'CYCLING'],
+  Cardio: ['CARDIO'],
   Zumba: ['GROUP_X'],
-  Pilates: ['YOGA', 'GROUP_X'],
+  Pilates: ['PILATES'],
   'Group X': ['GROUP_X'],
   Cycling: ['CYCLING'],
 }

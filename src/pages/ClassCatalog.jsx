@@ -7,6 +7,8 @@ import Modal from '../components/Modal'
 import { formatDate, formatTime } from '../store/utils'
 import { STATUS, TIME_SLOTS, EMPTY_FILTERS, buildCatalog, filterCatalog, hasActiveFilter } from '../catalog/catalogRules'
 
+const dmy = v => formatDate(v)
+const hasDates = c => Boolean(c.startDate || c.registrationOpenAt)
 const seatText = (s, capacity) => s.remaining == null ? `Sĩ số tối đa ${capacity}` : `Còn ${s.remaining}/${capacity} chỗ`
 
 function CatalogView({ available, enrolledIds = [] }) {
@@ -50,7 +52,12 @@ function CatalogView({ available, enrolledIds = [] }) {
         <h3>{cls.name}</h3>
         <p>Mã lớp: {cls.classCode || '—'}</p>
         <p>HLV: {coachName(cls.coachId)}</p>
-        <p>{next ? `Buổi tới: ${formatDate(next.startTime)} ${formatTime(next.startTime)}` : 'Chưa có buổi sắp tới'}</p>
+        {hasDates(cls)
+          ? <>
+            <p>Thời gian học: {dmy(cls.startDate) || '—'} – {dmy(cls.endDate) || '—'}</p>
+            <p>Đăng ký: {dmy(cls.registrationOpenAt) || '—'} – {dmy(cls.registrationCloseAt) || '—'}</p>
+          </>
+          : <p>{next ? `Buổi tới: ${formatDate(next.startTime)} ${formatTime(next.startTime)}` : 'Chưa có buổi sắp tới'}</p>}
         <p>{next ? seatText(next, cls.capacity) : `Sĩ số tối đa ${cls.capacity}`}</p>
         <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice('') }}>Xem chi tiết</button>
       </article>)}
@@ -59,16 +66,23 @@ function CatalogView({ available, enrolledIds = [] }) {
       <div className="stack">
         <div className="catalog-top"><span className="badge badge-green">{detail.cls.subject}</span><span className={`badge ${STATUS[detail.status].badge}`}>{STATUS[detail.status].label}</span></div>
         {detail.cls.description && <p>{detail.cls.description}</p>}
+        {hasDates(detail.cls) && <div className="catalog-dates">
+          <div><span>Bắt đầu lớp</span>{dmy(detail.cls.startDate) || '—'}</div>
+          <div><span>Kết thúc lớp</span>{dmy(detail.cls.endDate) || '—'}</div>
+          <div><span>Mở đăng ký</span>{dmy(detail.cls.registrationOpenAt) || '—'}</div>
+          <div><span>Đóng đăng ký</span>{dmy(detail.cls.registrationCloseAt) || '—'}</div>
+        </div>}
         <p className="small muted">Mã lớp {detail.cls.classCode} · HLV {coachName(detail.cls.coachId)} · Sĩ số tối đa {detail.cls.capacity}</p>
         {notice && <div className="alert alert-success" role="status">{notice}</div>}
         {error && <div className="alert alert-error" role="alert">{error}</div>}
         {!detail.sessions.length ? <p className="muted">Lớp chưa có lịch học.</p> : <ul className="catalog-sessions">
           {detail.sessions.map(s => {
             const mine = enrolledIds.includes(Number(s.id))
-            const label = s.closed ? 'Đã đóng' : s.full ? 'Đã đầy' : mine ? 'Đã đăng ký' : 'Đăng ký'
+            const blocked = detail.status === 'upcoming' || detail.status === 'closed'
+            const label = blocked ? STATUS[detail.status].label : s.closed ? 'Đã đóng' : s.full ? 'Đã đầy' : mine ? 'Đã đăng ký' : 'Đăng ký'
             return <li key={s.id}>
               <span><strong>{formatDate(s.startTime)}</strong> {formatTime(s.startTime)}–{formatTime(s.endTime)} · {roomName(s.roomId)}<br /><span className="muted">{s.closed ? 'Buổi học đã bắt đầu' : seatText(s, detail.cls.capacity)}</span></span>
-              {isMember && <button className="btn btn-primary btn-sm" disabled={busy || s.closed || s.full || mine} onClick={() => enroll(s)}>{label}</button>}
+              {isMember && <button className="btn btn-primary btn-sm" disabled={busy || blocked || s.closed || s.full || mine} onClick={() => enroll(s)}>{label}</button>}
             </li>
           })}
         </ul>}
