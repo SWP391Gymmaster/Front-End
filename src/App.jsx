@@ -15,12 +15,18 @@ import Checkout from './pages/member/Checkout'
 import MemberSchedule from './pages/member/MemberSchedule'
 import Profile from './pages/member/Profile'
 import CoachSchedule from './pages/coach/CoachSchedule'
+import AdminUsers from './pages/admin/AdminUsers'
+import CoachDashboard from './pages/coach/CoachOverview'
 import Payments, { Invoices } from './pages/Payments'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import StaffManagement from './pages/admin/StaffManagement'
 import AdminPackages from './pages/admin/AdminPackages'
 
 const MENUS = {
+  coach: [
+    { key: 'dashboard', label: 'Tổng quan', icon: 'dashboard', el: CoachDashboard },
+    { key: 'schedule', label: 'Lịch dạy', icon: 'schedule', el: CoachSchedule },
+  ],
   admin: [
     { key: 'dashboard', label: 'Bảng điều khiển', icon: '📊', el: AdminDashboard },
     { key: 'staff', label: 'Quản lý nhân sự', icon: '👥', el: StaffManagement },
@@ -28,6 +34,7 @@ const MENUS = {
     { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
     { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
     { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
+    { key: 'users', label: 'Accounts & verification', icon: 'users', el: AdminUsers },
   ],
   manager: [
     { key: 'dashboard', label: 'Tổng quan doanh thu', icon: '📊', el: ManagerDashboard },
@@ -56,7 +63,7 @@ const MENUS = {
 function RoleApp({ user, initialPage }) {
   const { loading, loadError, refresh } = useStore()
   const [page, setPage] = useState(initialPage)
-  const menu = user.role === 'member' ? MENUS.member : [...MENUS[user.role], { key: 'profile', label: 'Hồ sơ', el: Profile }]
+  const menu = user.role === 'member' || user.role === 'admin' ? MENUS[user.role] : [...MENUS[user.role], { key: 'profile', label: 'Hồ sơ', el: Profile }]
   const Page = (menu.find((m) => m.key === page) || menu[0]).el
   return (
     <Layout menu={menu} page={page} setPage={setPage}>

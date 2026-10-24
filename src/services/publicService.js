@@ -26,9 +26,9 @@ export function createPublicService({ baseUrl = '/backend', fetchImpl } = {}) {
       return { email: result.email, verificationEmailStatus: result.verificationEmailStatus }
     },
     async packages() {
-      const data = await request('/api/membership-packages', { auth: false })
+      const data = await request('/api/membership-packages/active', { auth: false })
       if (!Array.isArray(data)) throw new Error('Dữ liệu danh mục không hợp lệ.')
-      return data.filter(p => p.active)
+      return data.filter(p => p.active ?? p.status === 'ACTIVE')
     },
     async verifyEmail(token) {
       if (!token?.trim()) throw new Error('Liên kết xác minh email không có token.')
