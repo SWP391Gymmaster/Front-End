@@ -11,7 +11,7 @@ export const ROLES = {
 
 export const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
-export const SUBJECTS = ['Gym', 'Yoga', 'Boxing', 'Cardio', 'Zumba', 'Pilates']
+export const SUBJECTS = ['Gym', 'Yoga', 'Boxing', 'Cardio', 'Zumba', 'Pilates', 'Group X', 'Cycling']
 
 import { addDays, todayISO } from '../store/utils'
 

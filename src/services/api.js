@@ -42,6 +42,9 @@ const errors = {
   'Class has schedules with enrollments': 'Không thể xóa lớp đã có hội viên đăng ký.',
   'Class still has schedules, delete them first': 'Hãy xóa các buổi học trước khi xóa lớp.',
   'Capacity cannot be lower than current enrollment count': 'Sĩ số không được nhỏ hơn số hội viên đã đăng ký.',
+  'Room code must not be blank': 'Mã phòng không được để trống.',
+  'Class code must not be blank': 'Mã lớp không được để trống.',
+  'Room is used by existing schedules': 'Phòng đang được dùng trong lịch học, không thể xóa.',
 }
 // Tầng HTTP dùng chung: gửi JSON, gắn token, đọc response và chuyển lỗi thành ApiError.
 // Việc lưu phiên/cập nhật currentUser thuộc backendStore.js, không làm ở file này.
@@ -71,6 +74,10 @@ export function createApiClient({ baseUrl = '/backend', getToken = () => null, g
       if (response.status === 401 && token) onUnauthorized(token, sessionVersion)
       const raw = result?.message || result?.error
       let message = errors[raw] || raw
+      if (/^Room code already exists/i.test(raw)) message = 'Mã phòng đã tồn tại. Vui lòng chọn mã khác.'
+      if (/^Class code already exists/i.test(raw)) message = 'Mã lớp đã tồn tại. Vui lòng chọn mã khác.'
+      if (/^Room not found/i.test(raw)) message = 'Không tìm thấy phòng tập.'
+      if (/^Class not found/i.test(raw)) message = 'Không tìm thấy lớp học.'
       if (!message || (response.status >= 500 && !errors[raw])) message = response.status === 403 ? errors['Access denied'] : response.status === 401 ? errors['Authentication required'] : 'Yêu cầu thất bại. Vui lòng thử lại.'
       if (/email.*(already|exists)/i.test(message)) message = 'Email đã được sử dụng'
       if (/(username|user name).*(already|exists)/i.test(message)) message = 'Tên đăng nhập không hợp lệ hoặc đã được sử dụng.'

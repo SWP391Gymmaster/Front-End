@@ -1,6 +1,7 @@
 import { createApiClient, createControllerApi, mapPackage, mapSession, mapUser, packagePayload } from './api.js'
 import { membershipStatus } from './membershipStatus.js'
 import { validateRegistration } from './publicService.js'
+import { normalizeCode } from '../validation/roomRules.js'
 
 // Luồng đăng nhập: Login.jsx → login(email, password) → authenticate('login', body)
 // → api.login(body) trong api.js → BE → lưu phiên → cập nhật giao diện.
@@ -187,9 +188,8 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     savePackage: pkg => save('packages', 'packages', pkg, packagePayload(pkg), mapPackage),
     togglePackage: id => { const pkg = snapshot.packages.find(p => p.id === id); return save('packages', 'packages', pkg, packagePayload({ ...pkg, active: !pkg.active }), mapPackage) },
     deletePackage: id => remove('packages', 'packages', id),
-    saveRoom: room => save('rooms', 'rooms', room, { name: room.name.trim(), capacity: Number(room.capacity) }),
-    deleteRoom: id => remove('rooms', 'rooms', id),
-    saveClass: cls => save('classes', 'classes', cls, { name: cls.name.trim(), subject: cls.subject, description: cls.description || '', capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null }),
+    saveRoom: room => save('rooms', 'rooms', room, { roomCode: normalizeCode(room.roomCode), name: room.name.trim(), capacity: Number(room.capacity), type: room.type }),    deleteRoom: id => remove('rooms', 'rooms', id),
+    saveClass: cls => save('classes', 'classes', cls, {classCode: normalizeCode(cls.classCode), name: cls.name.trim(), subject: cls.subject, description: cls.description || '', capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null }),
     deleteClass: id => remove('classes', 'classes', id),
     saveSchedule: schedule => save('schedules', 'schedules', schedule, { classId: Number(schedule.classId), roomId: Number(schedule.roomId), coachId: schedule.coachId ? Number(schedule.coachId) : null, startTime: schedule.startTime, endTime: schedule.endTime }),
     deleteSchedule: id => remove('schedules', 'schedules', id),
