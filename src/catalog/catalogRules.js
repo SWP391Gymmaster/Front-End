@@ -1,7 +1,8 @@
-
+// Luật cho trang Danh sách lớp (T2.1 lọc, T2.2 trạng thái/chỗ trống). Hàm thuần để test.
 import { vietnamTime } from '../services/api.js'
 
 export const STATUS = {
+  upcoming: { label: 'Chưa mở', badge: 'badge-wait' },
   open: { label: 'Đang mở', badge: 'badge-green' },
   full: { label: 'Đã đầy', badge: 'badge-red' },
   closed: { label: 'Đã đóng', badge: 'badge-gray' },
@@ -16,7 +17,22 @@ export const TIME_SLOTS = [
 export const EMPTY_FILTERS = { subject: '', coachId: '', date: '', slot: '', status: '', hasSeats: false }
 
 const at = (value) => new Date(vietnamTime(value))
+// Ngày không kèm giờ: mốc mở là 00:00, mốc đóng là hết ngày đó.
+const dayStart = (value) => (value ? at(`${String(value).slice(0, 10)}T00:00:00`) : null)
+const dayEnd = (value) => (value ? at(`${String(value).slice(0, 10)}T23:59:59`) : null)
 
+// Trạng thái theo thời hạn đăng ký của lớp. Trả null nếu BE chưa có các trường ngày.
+export function windowStatus(cls, now) {
+  const open = dayStart(cls.registrationOpenAt)
+  const close = dayEnd(cls.registrationCloseAt)
+  const end = dayEnd(cls.endDate)
+  if (open && now < open) return 'upcoming'
+  if ((close && now > close) || (end && now > end)) return 'closed'
+  return null
+}
+
+// available: danh sách buổi còn chỗ do BE trả (chỉ hội viên có); null nếu chưa biết sĩ số.
+// BE chỉ trả buổi tương lai còn chỗ, nên buổi tương lai không nằm trong danh sách ⇒ đã đầy.
 export function buildCatalog({ classes, schedules, available = null, now = new Date() }) {
   const free = available ? new Map(available.map((s) => [Number(s.id), s])) : null
   return classes.map((cls) => {
@@ -36,9 +52,12 @@ export function buildCatalog({ classes, schedules, available = null, now = new D
       })
     const upcoming = sessions.filter((s) => !s.closed)
     const hasCounts = Boolean(free)
-    let status = 'open'
-    if (!upcoming.length) status = 'closed'
-    else if (hasCounts && upcoming.every((s) => s.full)) status = 'full'
+    let status = windowStatus(cls, now)
+    if (!status) {
+      status = 'open'
+      if (!upcoming.length) status = 'closed'
+      else if (hasCounts && upcoming.every((s) => s.full)) status = 'full'
+    }
     const next = upcoming.find((s) => !s.full) || upcoming[0] || null
     return { cls, sessions, upcoming, next, status, hasCounts, coachIds: [...new Set([cls.coachId, ...sessions.map((s) => s.coachId)].filter(Boolean).map(Number))] }
   })

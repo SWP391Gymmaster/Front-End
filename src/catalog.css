@@ -1,4 +1,4 @@
-.catalog-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.catalog-filters { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
 .catalog-filters label { min-width: 150px; }
 .catalog-filters .check { flex-direction: row; align-items: center; min-width: auto; gap: 8px; }
 .catalog-filters .check input { width: auto; min-height: auto; }
@@ -9,3 +9,6 @@
 .catalog-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .catalog-sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .catalog-sessions li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.badge-wait { background: var(--info-soft); color: var(--fg); }
+.catalog-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 16px; font-size: 13px; }
+.catalog-dates span { color: var(--muted); display: block; font-size: 12px; }

@@ -56,3 +56,12 @@ test('còn chỗ + các bộ lọc khác kết hợp với nhau', () => {
 test('bộ lọc rỗng trả về tất cả lớp', () => {
   assert.equal(filterCatalog(items, EMPTY_FILTERS).length, 3)
 })
+
+test('trạng thái theo thời hạn đăng ký: chưa mở / đang mở / đã đóng', () => {
+  const dated = (extra) => buildCatalog({ classes: [{ id: 1, name: 'L', subject: 'Yoga', capacity: 5, ...extra }], schedules: [{ id: 1, classId: 1, startTime: '2026-11-02T07:00:00', endTime: '2026-11-02T08:00:00' }], available: [{ id: 1, registeredCount: 1, remainingSlots: 4 }], now })[0].status
+  assert.equal(dated({ registrationOpenAt: '2026-10-24', registrationCloseAt: '2026-10-29' }), 'upcoming')
+  assert.equal(dated({ registrationOpenAt: '2026-10-20', registrationCloseAt: '2026-10-29' }), 'open')
+  assert.equal(dated({ registrationOpenAt: '2026-10-10', registrationCloseAt: '2026-10-20' }), 'closed')
+  assert.equal(dated({ endDate: '2026-10-20' }), 'closed')
+  assert.equal(dated({}), 'open')
+})
