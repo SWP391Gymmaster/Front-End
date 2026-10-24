@@ -16,6 +16,8 @@ export const SUBJECT_ROOM_TYPES = {
   Cardio: ['CARDIO', 'CYCLING'],
   Zumba: ['GROUP_X'],
   Pilates: ['YOGA', 'GROUP_X'],
+  'Group X': ['GROUP_X'],
+  Cycling: ['CYCLING'],
 }
 
 export const roomTypeLabel = (type) => ROOM_TYPES.find((t) => t.value === type)?.label || type || '—'

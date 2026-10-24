@@ -4,7 +4,6 @@ import { useStore } from '../store/context'
 import { useMemberPortal } from '../services/useMemberPortal'
 import MemberDataState from '../components/MemberDataState'
 import Modal from '../components/Modal'
-import { SUBJECTS } from '../data/seed'
 import { formatDate, formatTime } from '../store/utils'
 import { STATUS, TIME_SLOTS, EMPTY_FILTERS, buildCatalog, filterCatalog, hasActiveFilter } from '../catalog/catalogRules'
 
@@ -18,6 +17,7 @@ function CatalogView({ available, enrolledIds = [] }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const coaches = users.filter(u => u.role === 'coach')
+  const subjects = [...new Set(classes.map(c => c.subject).filter(Boolean))]
   const items = buildCatalog({ classes, schedules, available })
   const visible = filterCatalog(items, filters)
   const detail = selected && items.find(i => i.cls.id === selected)
@@ -33,7 +33,7 @@ function CatalogView({ available, enrolledIds = [] }) {
   }
   return <div className="stack">
     <div className="card"><div className="form catalog-filters">
-      <label>Bộ môn<select value={filters.subject} onChange={e => set('subject', e.target.value)}><option value="">Tất cả</option>{SUBJECTS.map(s => <option key={s}>{s}</option>)}</select></label>
+      <label>Bộ môn<select value={filters.subject} onChange={e => set('subject', e.target.value)}><option value="">Tất cả</option>{subjects.map(s => <option key={s}>{s}</option>)}</select></label>
       <label>Huấn luyện viên<select value={filters.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Tất cả</option>{coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       <label>Ngày học<input type="date" value={filters.date} onChange={e => set('date', e.target.value)} /></label>
       <label>Khung giờ<select value={filters.slot} onChange={e => set('slot', e.target.value)}><option value="">Cả ngày</option>{TIME_SLOTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></label>
