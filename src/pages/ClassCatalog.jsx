@@ -9,12 +9,6 @@ import { STATUS, TIME_SLOTS, EMPTY_FILTERS, buildCatalog, filterCatalog, hasActi
 
 const dmy = v => formatDate(v)
 const hasDates = c => Boolean(c.startDate || c.registrationOpenAt)
-// Dòng thời hạn đăng ký hiển thị trên thẻ, đổi theo trạng thái
-const windowLine = (c, status) => {
-  if (status === 'upcoming') return `Mở đăng ký từ ${dmy(c.registrationOpenAt)}`
-  if (status === 'closed') return 'Đã hết hạn đăng ký'
-  return c.registrationCloseAt ? `Hạn đăng ký: ${dmy(c.registrationCloseAt)}` : ''
-}
 const seatText = (s, capacity) => s.remaining == null ? `Sĩ số tối đa ${capacity}` : `Còn ${s.remaining}/${capacity} chỗ`
 
 function CatalogView({ available, enrolledIds = [] }) {
@@ -58,9 +52,12 @@ function CatalogView({ available, enrolledIds = [] }) {
         <h3>{cls.name}</h3>
         <p>Mã lớp: {cls.classCode || '—'}</p>
         <p>HLV: {coachName(cls.coachId)}</p>
-        {hasDates(cls) && <p>Khai giảng: {dmy(cls.startDate)}{cls.endDate ? ` – ${dmy(cls.endDate)}` : ''}</p>}
-        {hasDates(cls) && windowLine(cls, status) && <p>{windowLine(cls, status)}</p>}
-        <p>{next ? `Buổi tới: ${formatDate(next.startTime)} ${formatTime(next.startTime)}` : 'Chưa có buổi sắp tới'}</p>
+        {hasDates(cls)
+          ? <>
+            <p>Thời gian học: {dmy(cls.startDate) || '—'} – {dmy(cls.endDate) || '—'}</p>
+            <p>Đăng ký: {dmy(cls.registrationOpenAt) || '—'} – {dmy(cls.registrationCloseAt) || '—'}</p>
+          </>
+          : <p>{next ? `Buổi tới: ${formatDate(next.startTime)} ${formatTime(next.startTime)}` : 'Chưa có buổi sắp tới'}</p>}
         <p>{next ? seatText(next, cls.capacity) : `Sĩ số tối đa ${cls.capacity}`}</p>
         <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice('') }}>Xem chi tiết</button>
       </article>)}
