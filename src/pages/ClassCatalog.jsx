@@ -4,6 +4,9 @@ import { useStore } from '../store/context'
 import { useMemberPortal } from '../services/useMemberPortal'
 import MemberDataState from '../components/MemberDataState'
 import Modal from '../components/Modal'
+import ClassFormModal from './catalog/ClassFormModal'
+import SessionFormModal from './catalog/SessionFormModal'
+import BulkSessions from './catalog/BulkSessions'
 import { formatDate, formatTime } from '../store/utils'
 import { STATUS, TIME_SLOTS, EMPTY_FILTERS, buildCatalog, filterCatalog, hasActiveFilter } from '../catalog/catalogRules'
 
@@ -11,12 +14,18 @@ const dmy = v => formatDate(v)
 const seatText = (s, capacity) => s.remaining == null ? `Sĩ số tối đa ${capacity}` : `Còn ${s.remaining}/${capacity} chỗ`
 
 function CatalogView({ available, enrolledIds = [] }) {
-  const { classes, schedules, rooms, users, currentUser, memberService } = useStore()
+  const { classes, schedules, rooms, users, currentUser, memberService, deleteClass, deleteSchedule } = useStore()
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [selected, setSelected] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // Quản lý (chỉ Manager, BE chỉ cho Manager ghi): form lớp, form buổi học, xác nhận xóa
+  const [classForm, setClassForm] = useState(null) // { cls } — cls = null nghĩa là tạo mới
+  const [sessionForm, setSessionForm] = useState(null) // { session } — session = null nghĩa là thêm mới
+  const [confirm, setConfirm] = useState(null) // { kind: 'class' | 'session', item }
+  const [confirmError, setConfirmError] = useState('')
+  const [bulkOpen, setBulkOpen] = useState(false)
   // Tự cập nhật mỗi phút để thẻ chuyển trạng thái (Chưa mở → Đang mở) mà không cần tải lại trang
   const [now, setNow] = useState(() => new Date())
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(timer) }, [])
@@ -29,13 +38,23 @@ function CatalogView({ available, enrolledIds = [] }) {
   const coachName = id => coaches.find(c => Number(c.id) === Number(id))?.name || 'Chưa phân công'
   const roomName = id => rooms.find(r => r.id === id)?.name || '—'
   const isMember = currentUser.role === 'member'
+  const canManage = currentUser.role === 'manager'
   const enroll = async session => {
     if (busy) return
     setBusy(true); setError(''); setNotice('')
     try { await memberService.enroll(session.id); setNotice('Đăng ký thành công. Buổi học đã được thêm vào lịch cá nhân.') }
     catch (err) { setError(err.message) } finally { setBusy(false) }
   }
+  const destroy = async () => {
+    if (busy || !confirm) return
+    setBusy(true); setConfirmError('')
+    try {
+      if (confirm.kind === 'class') { await deleteClass(confirm.item.id); setSelected(null) } else await deleteSchedule(confirm.item.id)
+      setConfirm(null)
+    } catch (err) { setConfirmError(err.message) } finally { setBusy(false) }
+  }
   return <div className="stack">
+    {canManage && <div className="catalog-toolbar"><h3>Danh sách lớp ({items.length})</h3><button className="btn btn-primary" onClick={() => setClassForm({ cls: null })}>+ Tạo lớp mới</button></div>}
     <div className="card"><div className="form catalog-filters">
       <label>Bộ môn<select value={filters.subject} onChange={e => set('subject', e.target.value)}><option value="">Tất cả</option>{subjects.map(s => <option key={s}>{s}</option>)}</select></label>
       <label>Huấn luyện viên<select value={filters.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Tất cả</option>{coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
@@ -65,7 +84,11 @@ function CatalogView({ available, enrolledIds = [] }) {
             <p>Kết thúc lớp: {dmy(cls.endDate || lastDate) || '—'}</p>
           </>}
         <p>{next ? seatText(next, cls.capacity) : `Sĩ số tối đa ${cls.capacity}`}</p>
-        <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice('') }}>Xem chi tiết</button>
+        <div className="catalog-actions">
+          <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice(''); setBulkOpen(false) }}>Xem chi tiết</button>
+          {canManage && <button className="btn btn-sm" onClick={() => setClassForm({ cls })}>Sửa</button>}
+          {canManage && <button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'class', item: cls }); setConfirmError('') }}>Xóa</button>}
+        </div>
       </article>)}
     </div>}
     {detail && <Modal title={detail.cls.name} onClose={() => setSelected(null)} width={640}>
@@ -88,10 +111,24 @@ function CatalogView({ available, enrolledIds = [] }) {
             const label = blocked ? STATUS[detail.status].label : s.closed ? 'Đã đóng' : s.full ? 'Đã đầy' : mine ? 'Đã đăng ký' : 'Đăng ký'
             return <li key={s.id}>
               <span><strong>{formatDate(s.startTime)}</strong> {formatTime(s.startTime)}–{formatTime(s.endTime)} · {roomName(s.roomId)}<br /><span className="muted">{s.closed ? 'Buổi học đã bắt đầu' : seatText(s, detail.cls.capacity)}</span></span>
+              {canManage && <span className="catalog-session-actions"><button className="btn btn-sm" onClick={() => setSessionForm({ session: s })}>Sửa</button><button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'session', item: s }); setConfirmError('') }}>Xóa</button></span>}
               {isMember && <button className="btn btn-primary btn-sm" disabled={busy || blocked || s.closed || s.full || mine} onClick={() => enroll(s)}>{label}</button>}
             </li>
           })}
         </ul>}
+        {canManage && <div className="stack">
+          <div className="catalog-actions"><button className="btn btn-sm" onClick={() => setSessionForm({ session: null })}>+ Thêm buổi học</button><button className="btn btn-sm" aria-expanded={bulkOpen} onClick={() => setBulkOpen(!bulkOpen)}>{bulkOpen ? 'Ẩn tạo nhiều buổi' : 'Tạo nhiều buổi'}</button></div>
+          {bulkOpen && <BulkSessions cls={detail.cls} />}
+        </div>}
+      </div>
+    </Modal>}
+    {classForm && <ClassFormModal cls={classForm.cls} onClose={() => setClassForm(null)} />}
+    {sessionForm && detail && <SessionFormModal cls={detail.cls} session={sessionForm.session} onClose={() => setSessionForm(null)} />}
+    {confirm && <Modal title="Xác nhận xóa" onClose={() => { if (!busy) setConfirm(null) }}>
+      <div className="stack">
+        <p>{confirm.kind === 'class' ? <>Xóa lớp <strong>{confirm.item.name}</strong>? Lớp phải không còn buổi học nào.</> : <>Xóa buổi học ngày <strong>{formatDate(confirm.item.startTime)} {formatTime(confirm.item.startTime)}</strong>?</>}</p>
+        {confirmError && <div className="alert alert-error" role="alert">{confirmError}</div>}
+        <div className="form-actions"><button className="btn" disabled={busy} onClick={() => setConfirm(null)}>Hủy</button><button className="btn btn-primary" disabled={busy} onClick={destroy}>{busy ? 'Đang xử lý...' : 'Xóa'}</button></div>
       </div>
     </Modal>}
   </div>
