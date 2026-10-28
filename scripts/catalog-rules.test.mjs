@@ -101,8 +101,10 @@ test('đăng ký sớm có giờ: chỉ đăng ký được trong khoảng mở 
   assert.equal(at('2026-10-28T10:59:00+07:00').status, 'upcoming')
   assert.equal(at('2026-10-28T10:59:00+07:00').canRegister, false)
   assert.equal(at('2026-10-28T11:00:00+07:00').canRegister, true)
+  assert.equal(at('2026-10-28T11:00:00+07:00').sessionsOpen, false) // đăng ký sớm: chỉ đăng ký lớp, chưa đăng ký buổi
   assert.equal(at('2026-10-28T22:59:00+07:00').status, 'upcoming')
   assert.equal(at('2026-10-28T23:01:00+07:00').status, 'open')
+  assert.equal(at('2026-10-28T23:01:00+07:00').sessionsOpen, true)
 })
 
 test('đăng ký lớp: sĩ số tính theo lớp, canJoin chỉ khi còn chỗ và chưa đăng ký', () => {
