@@ -1,6 +1,7 @@
 ﻿// All Spring controllers share this transport. /backend is proxied by Vite in development.
 export class ApiError extends Error {
-  constructor(message, status = 0, details = {}) { super(message); this.name = 'ApiError'; this.status = status; this.details = details }
+  // code = thông điệp gốc từ BE (tiếng Anh), dùng để FE nhận diện loại lỗi
+  constructor(message, status = 0, details = {}, code = '') { super(message); this.name = 'ApiError'; this.status = status; this.details = details; this.code = code }
 }
 const errors = {
   'Payment not found': 'Không tìm thấy thanh toán.',
@@ -26,7 +27,7 @@ const errors = {
   'Authentication required': 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
   'Access denied': 'Bạn không có quyền thực hiện thao tác này.',
   'Invalid request data': 'Dữ liệu không hợp lệ. Vui lòng kiểm tra biểu mẫu.',
-  'Membership package is expired or does not cover this class session': 'Gói tập đã hết hạn hoặc không bao phủ buổi học. Vui lòng liên hệ lễ tân.',
+  'Membership package is expired or does not cover this class session': 'Bạn chưa mua gói hoặc hiệu lực gói tập không bao gồm buổi học này. Vui lòng mua gói tập!',
   'Class session has already started': 'Buổi học đã bắt đầu.',
   'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này.',
   'Class session is full': 'Buổi học đã đủ chỗ.',
@@ -86,7 +87,7 @@ export function createApiClient({ baseUrl = '/backend', getToken = () => null, g
       if (!message || (response.status >= 500 && !errors[raw])) message = response.status === 403 ? errors['Access denied'] : response.status === 401 ? errors['Authentication required'] : 'Yêu cầu thất bại. Vui lòng thử lại.'
       if (/email.*(already|exists)/i.test(message)) message = 'Email đã được sử dụng'
       if (/(username|user name).*(already|exists)/i.test(message)) message = 'Tên đăng nhập không hợp lệ hoặc đã được sử dụng.'
-      throw new ApiError(message, response.status, result?.errors || {})
+      throw new ApiError(message, response.status, result?.errors || {}, raw || '')
     }
     // A dev-server HTML fallback must never be treated as API data.
     if (typeof result === 'string' && /<(!doctype|html)/i.test(result)) throw new ApiError('Địa chỉ API không hợp lệ. Kiểm tra cấu hình kết nối.')

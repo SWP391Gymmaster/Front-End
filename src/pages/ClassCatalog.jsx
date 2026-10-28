@@ -21,6 +21,8 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // Kết quả đăng ký buổi học hiển thị ngay dưới buổi được nhấn: { id, type: 'success' | 'error', text }
+  const [sessionMsg, setSessionMsg] = useState(null)
   // Quản lý (chỉ Manager, BE chỉ cho Manager ghi): form lớp, form buổi học, xác nhận xóa
   const [classForm, setClassForm] = useState(null) // { cls } — cls = null nghĩa là tạo mới
   const [sessionForm, setSessionForm] = useState(null) // { session } — session = null nghĩa là thêm mới
@@ -45,9 +47,9 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
   const enroll = async session => {
     if (busy) return
     if (lacksPackage) { setNeedPackage(true); return }
-    setBusy(true); setError(''); setNotice('')
-    try { await memberService.enroll(session.id); setNotice('Đăng ký thành công. Buổi học đã được thêm vào lịch cá nhân.') }
-    catch (err) { setError(err.message) } finally { setBusy(false) }
+    setBusy(true); setError(''); setNotice(''); setSessionMsg(null)
+    try { await memberService.enroll(session.id); setSessionMsg({ id: session.id, type: 'success', text: 'Đăng ký thành công. Buổi học đã được thêm vào lịch cá nhân.' }) }
+    catch (err) { setSessionMsg({ id: session.id, type: 'error', text: err.message, needPackage: /membership package/i.test(err.code || '') || /gói tập/i.test(err.message || '') }) } finally { setBusy(false) }
   }
   // Đăng ký / hủy đăng ký LỚP (chỉ khi bật FEATURES.classRegistration)
   const joinClass = async cls => {
@@ -105,7 +107,7 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
         <p>{classStat ? seatText({ remaining: classStat.remainingSlots }, cls.capacity) : next ? seatText(next, cls.capacity) : `Sĩ số tối đa ${cls.capacity}`}</p>
         {isMember && classStat?.registeredByMe && <p className="small"><strong>Bạn đã đăng ký lớp này</strong></p>}
         <div className="catalog-actions">
-          <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice('') }}>Xem chi tiết</button>
+          <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice(''); setSessionMsg(null) }}>Xem chi tiết</button>
           {isMember && canJoin && <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => joinClass(cls)}>Đăng ký lớp</button>}
           {canManage && <button className="btn btn-sm" onClick={() => setClassForm({ cls })}>Sửa</button>}
           {canManage && <button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'class', item: cls }); setConfirmError('') }}>Xóa</button>}
@@ -145,6 +147,9 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
               <span><strong>{formatDate(s.startTime)}</strong> {formatTime(s.startTime)}–{formatTime(s.endTime)} · {roomName(s.roomId)}<br /><span className="muted">{s.closed ? 'Buổi học đã bắt đầu' : seatText(s, detail.cls.capacity)}</span></span>
               {canManage && <span className="catalog-session-actions"><button className="btn btn-sm" onClick={() => setSessionForm({ session: s })}>Sửa</button><button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'session', item: s }); setConfirmError('') }}>Xóa</button></span>}
               {isMember && <button className="btn btn-primary btn-sm" disabled={busy || needClass || blocked || s.closed || s.full || mine} onClick={() => enroll(s)}>{label}</button>}
+              {sessionMsg?.id === s.id && <div className={`alert alert-${sessionMsg.type} catalog-session-msg`} role={sessionMsg.type === 'error' ? 'alert' : 'status'}>{sessionMsg.text}
+                {sessionMsg.needPackage && <div><button className="btn btn-primary btn-sm" onClick={() => { setSessionMsg(null); setSelected(null); goTo?.('buy') }}>Mua gói tập</button></div>}
+              </div>}
             </li>
           })}
         </ul>}
