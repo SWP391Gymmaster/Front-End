@@ -36,7 +36,8 @@ export function windowStatus(cls, now) {
   return null
 }
 
-// Hội viên được đăng ký không: lớp đang mở thì được; lớp chưa mở chỉ được khi đã tới ngày mở đăng ký sớm.
+// Hội viên được đăng ký LỚP không: lớp đang mở thì được; lớp chưa mở chỉ được khi đã tới giờ mở đăng ký sớm.
+// (Đăng ký buổi học còn chặt hơn: chỉ khi lớp đã mở thật, xem sessionsOpen trong buildCatalog.)
 export function canRegister(cls, status, now) {
   if (status === 'open') return true
   if (status !== 'upcoming') return false
@@ -82,10 +83,12 @@ export function buildCatalog({ classes, schedules, available = null, classStats 
       ? { firstDate: sessions[0].startTime.slice(0, 10), lastDate: sessions[sessions.length - 1].startTime.slice(0, 10), sessionCount: sessions.length }
       : { firstDate: '', lastDate: '', sessionCount: 0 }
     const timeOk = canRegister(cls, status, now)
+    // Đăng ký BUỔI HỌC chỉ mở khi lớp đã mở thật (sau khi đăng ký sớm kết thúc). Trong thời gian đăng ký sớm chỉ đăng ký được LỚP.
+    const sessionsOpen = status === 'open' || status === 'full'
     // Đăng ký LỚP: trong thời gian cho phép, lớp còn chỗ và hội viên chưa đăng ký lớp.
     const canJoin = Boolean(classStat) && timeOk && !classStat.registeredByMe && classStat.remainingSlots > 0
     return {
-      cls, sessions, upcoming, next, status, canRegister: timeOk, classStat, canJoin, hasCounts, ...range,
+      cls, sessions, upcoming, next, status, canRegister: timeOk, sessionsOpen, classStat, canJoin, hasCounts, ...range,
       coachIds: [...new Set([cls.coachId, ...sessions.map((s) => s.coachId)].filter(Boolean).map(Number))],
     }
   })

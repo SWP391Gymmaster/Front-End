@@ -120,7 +120,9 @@ function CatalogView({ available, enrolledIds = [], classStats = null }) {
         <p className="small muted">Mã lớp {detail.cls.classCode} · HLV {coachName(detail.cls.coachId)} · Sĩ số tối đa {detail.cls.capacity}</p>
         {notice && <div className="alert alert-success" role="status">{notice}</div>}
         {error && <div className="alert alert-error" role="alert">{error}</div>}
-        {isMember && detail.status === 'upcoming' && <div className="alert alert-info" role="status">{detail.canRegister ? 'Lớp đang trong thời gian đăng ký sớm. Bạn có thể đăng ký các buổi học bên dưới.' : `Chưa tới ngày mở đăng ký sớm${detail.cls.registrationOpenAt ? ` (${stamp(detail.cls.registrationOpenAt)})` : ''}.`}</div>}
+        {isMember && detail.status === 'upcoming' && <div className="alert alert-info" role="status">{!detail.canRegister
+          ? `Chưa tới giờ mở đăng ký sớm${detail.cls.registrationOpenAt ? ` (${stamp(detail.cls.registrationOpenAt)})` : ''}.`
+          : `Lớp đang trong thời gian đăng ký sớm.${detail.classStat ? (detail.classStat.registeredByMe ? ' Bạn đã đăng ký lớp.' : ' Bạn có thể đăng ký lớp ngay.') : ''} Đăng ký buổi học sẽ mở khi đăng ký sớm kết thúc${detail.cls.registrationCloseAt ? ` (${stamp(detail.cls.registrationCloseAt)})` : ''}.`}</div>}
         {isMember && detail.classStat && <div className="catalog-actions">
           {detail.classStat.registeredByMe
             ? <><span className="badge badge-green">Bạn đã đăng ký lớp này</span><button className="btn btn-sm btn-ghost" disabled={busy} onClick={() => { setConfirm({ kind: 'unregister', item: detail.cls }); setConfirmError('') }}>Hủy đăng ký lớp</button></>
@@ -131,9 +133,9 @@ function CatalogView({ available, enrolledIds = [], classStats = null }) {
         {!detail.sessions.length ? <p className="muted">Lớp chưa có lịch học.</p> : <ul className="catalog-sessions">
           {detail.sessions.map(s => {
             const mine = enrolledIds.includes(Number(s.id))
-            const blocked = !detail.canRegister && (detail.status === 'upcoming' || detail.status === 'closed')
+            const blocked = !detail.sessionsOpen
             const needClass = Boolean(detail.classStat) && !detail.classStat.registeredByMe
-            const label = needClass ? 'Cần đăng ký lớp' : blocked ? STATUS[detail.status].label : s.closed ? 'Đã đóng' : s.full ? 'Đã đầy' : mine ? 'Đã đăng ký' : 'Đăng ký'
+            const label = blocked ? STATUS[detail.status].label : needClass ? 'Cần đăng ký lớp' : s.closed ? 'Đã đóng' : s.full ? 'Đã đầy' : mine ? 'Đã đăng ký' : 'Đăng ký'
             return <li key={s.id}>
               <span><strong>{formatDate(s.startTime)}</strong> {formatTime(s.startTime)}–{formatTime(s.endTime)} · {roomName(s.roomId)}<br /><span className="muted">{s.closed ? 'Buổi học đã bắt đầu' : seatText(s, detail.cls.capacity)}</span></span>
               {canManage && <span className="catalog-session-actions"><button className="btn btn-sm" onClick={() => setSessionForm({ session: s })}>Sửa</button><button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'session', item: s }); setConfirmError('') }}>Xóa</button></span>}
