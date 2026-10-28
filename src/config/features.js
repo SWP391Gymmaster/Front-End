@@ -4,7 +4,7 @@ export const FEATURES = {
   classDates: true,
   // true: mở/kết thúc đăng ký sớm có cả giờ (BE đổi 2 trường registrationOpenAt/registrationCloseAt sang LocalDateTime).
   // false: chỉ nhập ngày (BE hiện tại, kiểu LocalDate); giờ mặc định mở 00:00 và đóng hết ngày.
-  registrationTimes: false,
+  registrationTimes: true,
   // true: hội viên đăng ký LỚP trước, rồi mới đăng ký được buổi học của lớp đó (BE cần API đăng ký lớp, xem trang yêu cầu BE).
-  classRegistration: false,
+  classRegistration: true,
 }

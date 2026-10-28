@@ -14,6 +14,9 @@ const dmy = v => formatDate(v)
 const stamp = v => v && String(v).length > 10 ? `${formatDate(v)} ${String(v).slice(11, 16)}` : dmy(v)
 const seatText = (s, capacity) => s.remaining == null ? `Sĩ số tối đa ${capacity}` : `Còn ${s.remaining}/${capacity} chỗ`
 
+// Lỗi do chưa có gói / gói không còn hiệu lực (BE trả "Membership package ...", bản demo trả câu tiếng Việt có "gói tập")
+const isPackageError = err => /membership package/i.test(err.code || '') || /gói tập/i.test(err.message || '')
+
 function CatalogView({ available, enrolledIds = [], classStats = null, membership = null, goTo }) {
   const { classes, schedules, rooms, users, currentUser, memberService, deleteClass, deleteSchedule } = useStore()
   const [filters, setFilters] = useState(EMPTY_FILTERS)
@@ -23,6 +26,7 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
   const [notice, setNotice] = useState('')
   // Kết quả đăng ký buổi học hiển thị ngay dưới buổi được nhấn: { id, type: 'success' | 'error', text }
   const [sessionMsg, setSessionMsg] = useState(null)
+  const [classMsg, setClassMsg] = useState(null) // tương tự sessionMsg, cho đăng ký lớp
   // Quản lý (chỉ Manager, BE chỉ cho Manager ghi): form lớp, form buổi học, xác nhận xóa
   const [classForm, setClassForm] = useState(null) // { cls } — cls = null nghĩa là tạo mới
   const [sessionForm, setSessionForm] = useState(null) // { session } — session = null nghĩa là thêm mới
@@ -49,16 +53,21 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
     if (lacksPackage) { setNeedPackage(true); return }
     setBusy(true); setError(''); setNotice(''); setSessionMsg(null)
     try { await memberService.enroll(session.id); setSessionMsg({ id: session.id, type: 'success', text: 'Đăng ký thành công. Buổi học đã được thêm vào lịch cá nhân.' }) }
-    catch (err) { setSessionMsg({ id: session.id, type: 'error', text: err.message, needPackage: /membership package/i.test(err.code || '') || /gói tập/i.test(err.message || '') }) } finally { setBusy(false) }
+    catch (err) { setSessionMsg({ id: session.id, type: 'error', text: err.message, needPackage: isPackageError(err) }) } finally { setBusy(false) }
   }
   // Đăng ký / hủy đăng ký LỚP (chỉ khi bật FEATURES.classRegistration)
   const joinClass = async cls => {
     if (busy) return
     if (lacksPackage) { setNeedPackage(true); return }
-    setBusy(true); setError(''); setNotice('')
-    try { await memberService.registerClass(cls.id); setNotice(`Đã đăng ký lớp ${cls.name}. Bạn có thể đăng ký các buổi học của lớp.`) }
-    catch (err) { setError(err.message) } finally { setBusy(false) }
+    setBusy(true); setError(''); setNotice(''); setClassMsg(null)
+    const early = items.find(i => i.cls.id === cls.id)?.status === 'upcoming'
+    try { await memberService.registerClass(cls.id); setClassMsg({ id: cls.id, type: 'success', text: early ? `Bạn đã đăng ký sớm lớp ${cls.name}.` : `Đã đăng ký lớp ${cls.name}. Bạn có thể đăng ký các buổi học của lớp.` }) }
+    catch (err) { setClassMsg({ id: cls.id, type: 'error', text: err.message, needPackage: isPackageError(err) }) } finally { setBusy(false) }
   }
+  // Kết quả đăng ký lớp hiện ngay trên thẻ lớp / trong chi tiết lớp, kèm nút mua gói khi lỗi do gói tập
+  const classMsgBox = id => classMsg?.id === id && <div className={`alert alert-${classMsg.type} catalog-session-msg`} role={classMsg.type === 'error' ? 'alert' : 'status'}>{classMsg.text}
+    {classMsg.needPackage && <div><button className="btn btn-primary btn-sm" onClick={() => { setClassMsg(null); setSelected(null); goTo?.('buy') }}>Mua gói tập</button></div>}
+  </div>
   const leaveClass = async () => {
     if (busy || !confirm) return
     setBusy(true); setConfirmError('')
@@ -105,13 +114,14 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
             <p>Kết thúc lớp: {dmy(cls.endDate || lastDate) || '—'}</p>
           </>}
         <p>{classStat ? seatText({ remaining: classStat.remainingSlots }, cls.capacity) : next ? seatText(next, cls.capacity) : `Sĩ số tối đa ${cls.capacity}`}</p>
-        {isMember && classStat?.registeredByMe && <p className="small"><strong>Bạn đã đăng ký lớp này</strong></p>}
+        {isMember && classStat?.registeredByMe && <p className="small"><strong>{status === 'upcoming' ? 'Bạn đã đăng ký sớm lớp này' : 'Bạn đã đăng ký lớp này'}</strong></p>}
         <div className="catalog-actions">
-          <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice(''); setSessionMsg(null) }}>Xem chi tiết</button>
+          <button className="btn btn-sm" onClick={() => { setSelected(cls.id); setError(''); setNotice(''); setSessionMsg(null); setClassMsg(null) }}>Xem chi tiết</button>
           {isMember && canJoin && <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => joinClass(cls)}>Đăng ký lớp</button>}
           {canManage && <button className="btn btn-sm" onClick={() => setClassForm({ cls })}>Sửa</button>}
           {canManage && <button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'class', item: cls }); setConfirmError('') }}>Xóa</button>}
         </div>
+        {!detail && classMsgBox(cls.id)}
       </article>)}
     </div>}
     {detail && <Modal title={detail.cls.name} onClose={() => setSelected(null)} width={640}>
@@ -132,10 +142,11 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
           : `Lớp đang trong thời gian đăng ký sớm.${detail.classStat ? (detail.classStat.registeredByMe ? ' Bạn đã đăng ký lớp.' : ' Bạn có thể đăng ký lớp ngay.') : ''} Đăng ký buổi học sẽ mở khi đăng ký sớm kết thúc${detail.cls.registrationCloseAt ? ` (${stamp(detail.cls.registrationCloseAt)})` : ''}.`}</div>}
         {isMember && detail.classStat && <div className="catalog-actions">
           {detail.classStat.registeredByMe
-            ? <><span className="badge badge-green">Bạn đã đăng ký lớp này</span><button className="btn btn-sm btn-ghost" disabled={busy} onClick={() => { setConfirm({ kind: 'unregister', item: detail.cls }); setConfirmError('') }}>Hủy đăng ký lớp</button></>
+            ? <><span className="badge badge-green">{detail.status === 'upcoming' ? 'Bạn đã đăng ký sớm lớp này' : 'Bạn đã đăng ký lớp này'}</span><button className="btn btn-sm btn-ghost" disabled={busy} onClick={() => { setConfirm({ kind: 'unregister', item: detail.cls }); setConfirmError('') }}>Hủy đăng ký lớp</button></>
             : detail.canJoin ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => joinClass(detail.cls)}>Đăng ký lớp</button>
               : <span className="small muted">{detail.classStat.remainingSlots === 0 ? 'Lớp đã đủ sĩ số.' : detail.status === 'closed' ? 'Lớp đã đóng.' : 'Chưa thể đăng ký lớp.'}</span>}
           {!detail.classStat.registeredByMe && detail.canJoin && <span className="small muted">Cần đăng ký lớp trước khi đăng ký từng buổi học.</span>}
+          {classMsgBox(detail.cls.id)}
         </div>}
         {!detail.sessions.length ? <p className="muted">Lớp chưa có lịch học.</p> : <ul className="catalog-sessions">
           {detail.sessions.map(s => {
