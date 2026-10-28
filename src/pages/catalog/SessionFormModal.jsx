@@ -1,0 +1,40 @@
+import { useState } from 'react'
+import Modal from '../../components/Modal'
+import { useStore } from '../../store/context'
+import { roomMatchesSubject } from '../../validation/roomRules'
+import { validateSchedule } from '../../validation/classRules'
+
+// Thêm hoặc sửa một buổi học của lớp. Ô phòng chỉ liệt kê phòng hợp bộ môn của lớp.
+export default function SessionFormModal({ cls, session, onClose }) {
+  const { users, rooms, schedules, classes, saveSchedule } = useStore()
+  const [form, setForm] = useState(() => session
+    ? { id: session.id, classId: cls.id, roomId: session.roomId ?? '', coachId: session.coachId ?? '', startTime: String(session.startTime).slice(0, 16), endTime: String(session.endTime).slice(0, 16) }
+    : { classId: cls.id, roomId: '', coachId: '', startTime: '', endTime: '' })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const coaches = users.filter(u => u.role === 'coach')
+  const set = (key, value) => setForm({ ...form, [key]: value })
+  const roomList = rooms.filter(r => roomMatchesSubject(r, cls.subject) || String(r.id) === String(form.roomId))
+  const submit = async event => {
+    event.preventDefault()
+    if (busy) return
+    const room = rooms.find(r => String(r.id) === String(form.roomId))
+    const problems = validateSchedule(form, cls, room, { schedules, classes })
+    if (problems.length) { setError(problems.join(' ')); return }
+    setBusy(true); setError('')
+    try { await saveSchedule(form); onClose() } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+  return <Modal title={session ? 'Sửa buổi học' : 'Thêm buổi học'} onClose={() => { if (!busy) onClose() }} width={560}>
+    <form className="form" onSubmit={submit}>
+      <p className="small muted">Lớp: <strong>{cls.name}</strong> ({cls.subject})</p>
+      <fieldset className="form api-fieldset" disabled={busy}>
+        <label>Phòng (lọc theo bộ môn)<select required value={form.roomId} onChange={e => set('roomId', e.target.value)}><option value="">-- Chọn phòng --</option>{roomList.map(r => <option key={r.id} value={r.id}>{r.name} ({r.capacity} chỗ)</option>)}</select></label>
+        <label>Huấn luyện viên<select value={form.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Theo huấn luyện viên của lớp</option>{coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        <label>Ngày giờ bắt đầu<input type="datetime-local" required value={form.startTime} onChange={e => set('startTime', e.target.value)} /></label>
+        <label>Ngày giờ kết thúc<input type="datetime-local" required value={form.endTime} onChange={e => set('endTime', e.target.value)} /></label>
+      </fieldset>
+      {error && <div className="alert alert-error" role="alert">{error}</div>}
+      <div className="form-actions"><button type="button" className="btn" disabled={busy} onClick={onClose}>Hủy</button><button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Đang xử lý...' : 'Lưu buổi học'}</button></div>
+    </form>
+  </Modal>
+}
