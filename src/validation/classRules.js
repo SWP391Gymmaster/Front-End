@@ -1,27 +1,18 @@
 // Luật nghiệp vụ cho Lớp học và Buổi học (T2.4). Hàm thuần để test bằng node --test.
 import { codeProblem, roomMatchesSubject, roomTypeLabel } from './roomRules.js'
+import { validateClassDates } from './classDates.js'
+
+export { validateClassDates }
 
 const ymd = (value) => (value ? String(value).slice(0, 10) : '')
 const minute = (value) => String(value).slice(0, 16)
 const hhmm = (value) => String(value).slice(11, 16)
 const dm = (value) => `${String(value).slice(8, 10)}/${String(value).slice(5, 7)}`
 
-// Ngày của lớp (chỉ kiểm tra khi có nhập): bắt đầu < kết thúc, mở < đóng đăng ký sớm, đóng đăng ký sớm ≤ ngày bắt đầu.
-export function validateClassDates(form) {
-  const errors = []
-  const start = ymd(form.startDate)
-  const end = ymd(form.endDate)
-  const open = ymd(form.registrationOpenAt)
-  const close = ymd(form.registrationCloseAt)
-  if (start && end && end <= start) errors.push('Ngày kết thúc lớp phải sau ngày bắt đầu.')
-  if (open && close && close < open) errors.push('Ngày kết thúc đăng ký sớm phải từ ngày mở đăng ký sớm trở đi.')
-  if (close && start && close > start) errors.push('Đăng ký sớm phải kết thúc trước hoặc đúng ngày bắt đầu lớp.')
-  return errors
-}
-
 // Lớp: mã, tên, sĩ số; khi sửa còn phải khớp với các phòng đã xếp lịch.
 // usedRooms = các phòng mà lớp này đang dùng trong lịch (có thể rỗng khi tạo mới).
-export function validateClass(form, usedRooms = []) {
+// dateOptions: xem validateClassDates (now, original, timed, requireDates).
+export function validateClass(form, usedRooms = [], dateOptions = {}) {
   const errors = []
   const code = codeProblem(form.classCode, 'Mã lớp')
   if (code) errors.push(code)
@@ -34,7 +25,7 @@ export function validateClass(form, usedRooms = []) {
   }
   const wrong = usedRooms.find((r) => !roomMatchesSubject(r, form.subject))
   if (wrong) errors.push(`Bộ môn ${form.subject} không phù hợp với phòng "${wrong.name}" (${roomTypeLabel(wrong.type)}) mà lớp đang dùng.`)
-  errors.push(...validateClassDates(form))
+  errors.push(...validateClassDates(form, dateOptions))
   return errors
 }
 

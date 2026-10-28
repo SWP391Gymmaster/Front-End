@@ -94,3 +94,25 @@ test('khoảng ngày suy ra từ các buổi học của lớp', () => {
     { id: 3, classId: 1, startTime: '2026-12-30T07:00:00', endTime: '2026-12-30T08:00:00' }], now })[0]
   assert.deepEqual([many.firstDate, many.lastDate, many.sessionCount], ['2026-10-31', '2026-12-30', 3])
 })
+
+test('đăng ký sớm có giờ: chỉ đăng ký được trong khoảng mở đến đóng', () => {
+  const cls = { id: 9, name: 'Yoga mới', subject: 'Yoga', capacity: 10, registrationOpenAt: '2026-10-28T11:00:00', registrationCloseAt: '2026-10-28T23:00:00', startDate: '2026-10-29', endDate: '2026-12-29' }
+  const at = (t) => buildCatalog({ classes: [cls], schedules: [{ id: 91, classId: 9, startTime: '2026-10-29T07:00:00', endTime: '2026-10-29T08:00:00' }], now: new Date(t) })[0]
+  assert.equal(at('2026-10-28T10:59:00+07:00').status, 'upcoming')
+  assert.equal(at('2026-10-28T10:59:00+07:00').canRegister, false)
+  assert.equal(at('2026-10-28T11:00:00+07:00').canRegister, true)
+  assert.equal(at('2026-10-28T22:59:00+07:00').status, 'upcoming')
+  assert.equal(at('2026-10-28T23:01:00+07:00').status, 'open')
+})
+
+test('đăng ký lớp: sĩ số tính theo lớp, canJoin chỉ khi còn chỗ và chưa đăng ký', () => {
+  const cls = { id: 1, name: 'Yoga sáng', subject: 'Yoga', capacity: 10 }
+  const sch = [{ id: 11, classId: 1, startTime: '2026-10-25T07:00:00', endTime: '2026-10-25T08:00:00' }]
+  const build = (stat) => buildCatalog({ classes: [cls], schedules: sch, classStats: [{ classId: 1, ...stat }], now })[0]
+  assert.equal(build({ registeredCount: 3, remainingSlots: 7, registeredByMe: false }).canJoin, true)
+  assert.equal(build({ registeredCount: 3, remainingSlots: 7, registeredByMe: true }).canJoin, false)
+  const full = build({ registeredCount: 10, remainingSlots: 0, registeredByMe: false })
+  assert.equal(full.status, 'full')
+  assert.equal(full.canJoin, false)
+  assert.equal(buildCatalog({ classes: [cls], schedules: sch, now })[0].classStat, null)
+})
