@@ -14,7 +14,7 @@ const dmy = v => formatDate(v)
 const stamp = v => v && String(v).length > 10 ? `${formatDate(v)} ${String(v).slice(11, 16)}` : dmy(v)
 const seatText = (s, capacity) => s.remaining == null ? `Sĩ số tối đa ${capacity}` : `Còn ${s.remaining}/${capacity} chỗ`
 
-function CatalogView({ available, enrolledIds = [], classStats = null }) {
+function CatalogView({ available, enrolledIds = [], classStats = null, membership = null, goTo }) {
   const { classes, schedules, rooms, users, currentUser, memberService, deleteClass, deleteSchedule } = useStore()
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [selected, setSelected] = useState(null)
@@ -38,9 +38,13 @@ function CatalogView({ available, enrolledIds = [], classStats = null }) {
   const coachName = id => coaches.find(c => Number(c.id) === Number(id))?.name || 'Chưa phân công'
   const roomName = id => rooms.find(r => r.id === id)?.name || '—'
   const isMember = currentUser.role === 'member'
+    // Chưa mua gói hoặc gói đã hết hạn: báo và đưa hội viên tới trang Gói tập thay vì gọi BE.
+  const [needPackage, setNeedPackage] = useState(false)
+  const lacksPackage = isMember && (membership?.status === 'none' || membership?.status === 'expired')
   const canManage = currentUser.role === 'manager'
   const enroll = async session => {
     if (busy) return
+    if (lacksPackage) { setNeedPackage(true); return }
     setBusy(true); setError(''); setNotice('')
     try { await memberService.enroll(session.id); setNotice('Đăng ký thành công. Buổi học đã được thêm vào lịch cá nhân.') }
     catch (err) { setError(err.message) } finally { setBusy(false) }
@@ -48,6 +52,7 @@ function CatalogView({ available, enrolledIds = [], classStats = null }) {
   // Đăng ký / hủy đăng ký LỚP (chỉ khi bật FEATURES.classRegistration)
   const joinClass = async cls => {
     if (busy) return
+    if (lacksPackage) { setNeedPackage(true); return }
     setBusy(true); setError(''); setNotice('')
     try { await memberService.registerClass(cls.id); setNotice(`Đã đăng ký lớp ${cls.name}. Bạn có thể đăng ký các buổi học của lớp.`) }
     catch (err) { setError(err.message) } finally { setBusy(false) }
@@ -146,6 +151,12 @@ function CatalogView({ available, enrolledIds = [], classStats = null }) {
         {canManage && <div className="catalog-actions"><button className="btn btn-sm" onClick={() => setSessionForm({ session: null })}>+ Thêm buổi học</button></div>}
       </div>
     </Modal>}
+    {needPackage && <Modal title="Cần có gói tập" onClose={() => setNeedPackage(false)}>
+      <div className="stack">
+        <p>Bạn chưa mua gói hoặc gói tập đã hết hạn. Xin vui lòng mua gói tập!</p>
+        <div className="form-actions"><button className="btn" onClick={() => setNeedPackage(false)}>Để sau</button><button className="btn btn-primary" onClick={() => { setNeedPackage(false); setSelected(null); goTo?.('buy') }}>Mua gói tập</button></div>
+      </div>
+    </Modal>}
     {classForm && <ClassFormModal cls={classForm.cls} onClose={() => setClassForm(null)} />}
     {sessionForm && detail && <SessionFormModal cls={detail.cls} session={sessionForm.session} onClose={() => setSessionForm(null)} />}
     {confirm && <Modal title={confirm.kind === 'unregister' ? 'Hủy đăng ký lớp' : 'Xác nhận xóa'} onClose={() => { if (!busy) setConfirm(null) }}>
@@ -158,13 +169,13 @@ function CatalogView({ available, enrolledIds = [], classStats = null }) {
   </div>
 }
 
-function MemberCatalog() {
+function MemberCatalog({ goTo }) {
   const { data, error, retry } = useMemberPortal()
   if (!data || error) return <MemberDataState error={error} retry={retry} />
-  return <CatalogView available={data.sessions} enrolledIds={data.enrollments.map(e => Number(e.sessionId))} classStats={data.classStats} />
+  return <CatalogView available={data.sessions} enrolledIds={data.enrollments.map(e => Number(e.sessionId))} classStats={data.classStats} membership={data.status} goTo={goTo} />
 }
 
-export default function ClassCatalog() {
+export default function ClassCatalog({ goTo }) {
   const { currentUser } = useStore()
-  return currentUser.role === 'member' ? <MemberCatalog /> : <CatalogView available={null} />
+  return currentUser.role === 'member' ? <MemberCatalog goTo={goTo} /> : <CatalogView available={null} />
 }
