@@ -30,6 +30,11 @@ const errors = {
   'Class session has already started': 'Buổi học đã bắt đầu.',
   'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này.',
   'Class session is full': 'Buổi học đã đủ chỗ.',
+  'Not registered in this class': 'Bạn cần đăng ký lớp trước khi đăng ký buổi học của lớp này.',
+  'Already registered in this class': 'Bạn đã đăng ký lớp này.',
+  'Class is full': 'Lớp đã đủ sĩ số.',
+  'Class registration not found': 'Bạn chưa đăng ký lớp này.',
+  'Class registration is not open': 'Lớp chưa mở đăng ký hoặc đã đóng đăng ký.',
   'Enrollment not found': 'Không tìm thấy đăng ký buổi học.',
   'Schedule not found': 'Buổi học không còn khả dụng. Vui lòng tải lại lịch.',
   'Coach already has a schedule during this time': 'Huấn luyện viên bị trùng lịch trong khung giờ này.',
@@ -124,6 +129,10 @@ export function createControllerApi(request) {
     enrollments: () => request('/api/member/class-enrollments'),
     enroll: id => request(`/api/member/class-sessions/${encodeURIComponent(id)}/enrollment`, { method: 'POST' }),
     cancel: id => request(`/api/member/class-sessions/${encodeURIComponent(id)}/enrollment`, { method: 'DELETE' }),
+        // Đăng ký LỚP (cần BE hỗ trợ, bật FEATURES.classRegistration)
+    classStats: () => request('/api/member/classes'),
+    registerClass: id => request(`/api/member/classes/${encodeURIComponent(id)}/registration`, { method: 'POST' }),
+    cancelClassRegistration: id => request(`/api/member/classes/${encodeURIComponent(id)}/registration`, { method: 'DELETE' }),
   }
 }
 export const mapPackage = p => ({ ...p, days: p.durationDays })
