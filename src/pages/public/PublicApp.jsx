@@ -29,12 +29,52 @@ function Packages() {
   </section>
 }
 function Home() {
-  return <><section className="fe1-hero"><div><span className="fe1-eyebrow">MOVE WITH PURPOSE</span><h1>Mỗi ngày<br />một phiên bản<br /><em>khỏe hơn.</em></h1><p>Không gian dành cho hành trình của bạn. Tìm bộ môn phù hợp và bắt đầu theo nhịp riêng.</p><div className="fe1-actions"><a className="fe1-button" href="#plans" onClick={e => { e.preventDefault(); document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' }) }}>Khám phá gói tập ↘</a><a className="fe1-text-link" href="#/register">Tạo tài khoản miễn phí</a></div></div><div className="fe1-hero-art" aria-hidden="true"><div className="fe1-orbit" /><div className="fe1-weight"><i /><b /><i /></div><span>STRENGTH<br />BALANCE<br />ENERGY</span><small>YOUR NEXT CHAPTER STARTS HERE</small></div></section>
-    <section className="fe1-section"><span className="fe1-eyebrow">FIND YOUR MOVEMENT</span><h2>Chọn cách bạn muốn vận động</h2><div className="fe1-cards">{[
-      ['01', 'Gym', 'Rèn luyện sức mạnh với khu vực tạ và máy tập. Phù hợp để xây dựng thể lực và duy trì thói quen vận động.', '/images/gym.avif', 'Khu vực tập gym với máy tập và tạ'],
-      ['02', 'Yoga', 'Kết hợp chuyển động, hơi thở và sự tập trung để cải thiện độ linh hoạt, cân bằng và thư giãn.', '/images/yoga.webp', 'Không gian tập yoga yên tĩnh'],
-      ['03', 'Boxing', 'Làm quen với kỹ thuật đấm bốc trong bài tập giàu năng lượng, giúp tăng sức bền và phản xạ.', '/images/boxing.avif', 'Buổi tập boxing với bao cát và găng tay'],
-    ].map(([n, title, description, image, alt]) => <article className="fe1-discipline" key={n}><img className="fe1-discipline-image" src={image} alt={alt} loading="lazy" /><span>{n} / BỘ MÔN</span><h3>{title}</h3><p>{description}</p></article>)}</div><p>Đăng nhập để xem danh sách lớp và lịch tập hiện có.</p><a className="fe1-text-link" href="#/login">Đăng nhập để tiếp tục →</a></section><Packages /><section className="fe1-banner"><h2>Bước đầu không cần hoàn hảo.<br />Chỉ cần bắt đầu.</h2><a className="fe1-button" href="#/register">Tạo tài khoản</a></section></>
+  const disciplines = [
+    ['01', 'Gym', 'Rèn luyện sức mạnh với khu vực tạ và máy tập. Phù hợp để xây dựng thể lực và duy trì thói quen vận động.', '/images/gym.avif', 'Khu vực tập gym với máy tập và tạ'],
+    ['02', 'Yoga', 'Kết hợp chuyển động, hơi thở và sự tập trung để cải thiện độ linh hoạt, cân bằng và thư giãn.', '/images/yoga.webp', 'Không gian tập yoga yên tĩnh'],
+    ['03', 'Boxing', 'Làm quen với kỹ thuật đấm bốc trong bài tập giàu năng lượng, giúp tăng sức bền và phản xạ.', '/images/boxing.avif', 'Buổi tập boxing với bao cát và găng tay'],
+  ]
+  const benefits = [
+    ['Tìm lớp phù hợp', 'Xem danh sách lớp và lịch tập sau khi đăng nhập.'],
+    ['Theo dõi gói tập', 'Kiểm tra gói đang có hiệu lực và thời hạn sử dụng.'],
+    ['Quản lý lịch cá nhân', 'Xem lịch đã đăng ký và quản lý buổi tập của bạn.'],
+  ]
+  const steps = [
+    ['01', 'Tạo tài khoản', 'Đăng ký miễn phí bằng email và xác minh địa chỉ email của bạn.'],
+    ['02', 'Khám phá gói tập', 'Xem các gói đang mở bán và chọn gói phù hợp với mục tiêu.'],
+    ['03', 'Chọn lịch tập', 'Đăng nhập để xem lớp, lịch còn chỗ và quản lý các buổi đã đăng ký.'],
+  ]
+  return <>
+    <section className="fe1-hero">
+      <div>
+        <span className="fe1-eyebrow">GYMMASTER / BẮT ĐẦU HÀNH TRÌNH</span>
+        <h1>Mỗi ngày<br />một phiên bản<br /><em>khỏe hơn.</em></h1>
+        <p>Tìm bộ môn phù hợp, khám phá các gói tập và chủ động sắp xếp lịch luyện tập theo nhịp sống của bạn.</p>
+        <div className="fe1-actions">
+          <a className="fe1-button" href="#plans" onClick={e => { e.preventDefault(); document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' }) }}>Xem các gói tập ↓</a>
+          <a className="fe1-text-link" href="#/register">Tạo tài khoản miễn phí →</a>
+        </div>
+        <p className="fe1-hero-note">Đăng ký tài khoản không đồng nghĩa với việc mua gói tập.</p>
+      </div>
+      <div className="fe1-hero-art" aria-hidden="true"><div className="fe1-orbit" /><div className="fe1-weight"><i /><b /><i /></div><span>STRENGTH<br />BALANCE<br />ENERGY</span><small>YOUR NEXT CHAPTER STARTS HERE</small></div>
+    </section>
+    <section className="fe1-section" id="disciplines">
+      <div className="fe1-section-head"><div><span className="fe1-eyebrow">FIND YOUR MOVEMENT</span><h2>Chọn cách bạn muốn vận động</h2></div><p>Bắt đầu từ bộ môn bạn yêu thích. Lịch lớp chi tiết sẽ hiển thị sau khi đăng nhập.</p></div>
+      <div className="fe1-cards">{disciplines.map(([n, title, description, image, alt]) => <article className="fe1-discipline" key={n}><img className="fe1-discipline-image" src={image} alt={alt} loading="lazy" /><span>{n} / BỘ MÔN</span><h3>{title}</h3><p>{description}</p></article>)}</div>
+      <a className="fe1-text-link fe1-section-link" href="#/login">Đăng nhập để xem danh sách lớp và lịch tập →</a>
+    </section>
+    <section className="fe1-section fe1-benefits">
+      <div className="fe1-section-head"><div><span className="fe1-eyebrow">YOUR TRAINING, YOUR WAY</span><h2>Chủ động trên từng chặng đường</h2></div><p>GymMaster giúp bạn theo dõi các thông tin cần thiết trong hành trình tập luyện.</p></div>
+      <div className="fe1-cards">{benefits.map(([title, description], index) => <article className="fe1-info-card" key={title}><span>{String(index + 1).padStart(2, '0')}</span><h3>{title}</h3><p>{description}</p></article>)}</div>
+    </section>
+    <Packages />
+    <section className="fe1-section fe1-steps" id="getting-started">
+      <div className="fe1-section-head"><div><span className="fe1-eyebrow">GETTING STARTED</span><h2>Bắt đầu thật đơn giản</h2></div><p>Bạn có thể xem thông tin trước khi quyết định đăng ký gói tập.</p></div>
+      <div className="fe1-cards">{steps.map(([number, title, description]) => <article className="fe1-step-card" key={number}><span>{number}</span><h3>{title}</h3><p>{description}</p></article>)}</div>
+      <p className="fe1-login-reminder">Đã có tài khoản? <a href="#/login">Đăng nhập để tiếp tục</a> và xem lịch tập của bạn.</p>
+    </section>
+    <section className="fe1-banner"><div><span className="fe1-eyebrow">YOUR NEXT CHAPTER STARTS HERE</span><h2>Bước đầu không cần hoàn hảo.<br />Chỉ cần bắt đầu.</h2><p>Tạo tài khoản miễn phí để khám phá GymMaster.</p></div><a className="fe1-button" href="#/register">Tạo tài khoản miễn phí →</a></section>
+  </>
 }
 function ClassesRequiresLogin() {
   return <section className="fe1-section fe1-classes"><div className="fe1-empty"><h1>Đăng nhập để xem danh sách lớp</h1><p>Danh sách lớp và lịch tập được hiển thị sau khi bạn đăng nhập.</p><a className="fe1-button" href="#/login">Đăng nhập</a></div></section>
