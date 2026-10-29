@@ -8,7 +8,6 @@ import ManagerDashboard from './pages/manager/Dashboard'
 import Reports from './pages/manager/Reports'
 import Packages from './pages/manager/Packages'
 import Rooms from './pages/manager/Rooms'
-import Classes from './pages/manager/Classes'
 import ClassCatalog from './pages/ClassCatalog'
 import MemberHome from './pages/member/MemberHome'
 import Checkout from './pages/member/Checkout'
@@ -32,7 +31,7 @@ const MENUS = {
     { key: 'staff', label: 'Quản lý nhân sự', icon: '👥', el: StaffManagement },
     { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: AdminPackages },
     { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
-    { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
+    { key: 'catalog', label: 'Danh sách lớp', icon: '🗂️', el: ClassCatalog },
     { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
     { key: 'users', label: 'Accounts & verification', icon: 'users', el: AdminUsers },
   ],
@@ -41,7 +40,6 @@ const MENUS = {
     { key: 'reports', label: 'Báo cáo & Tiến độ', icon: '📈', el: Reports },
     { key: 'packages', label: 'Gói thành viên', icon: '🎫', el: Packages },
     { key: 'rooms', label: 'Phòng tập', icon: '🏢', el: Rooms },
-    { key: 'classes', label: 'Lớp học & Lịch', icon: '📅', el: Classes },
     { key: 'catalog', label: 'Danh sách lớp', icon: '🗂️', el: ClassCatalog },
     { key: 'payments', label: 'Thanh toán & Hóa đơn', icon: '🧾', el: Payments },
   ],

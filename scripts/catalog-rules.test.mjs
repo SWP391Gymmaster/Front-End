@@ -38,14 +38,14 @@ test('không có dữ liệu sĩ số thì không kết luận đầy', () => {
 
 test('lọc theo bộ môn, huấn luyện viên, trạng thái', () => {
   assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, subject: 'Yoga' }).map((i) => i.cls.id), [1])
-  assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, coachId: '7' }).map((i) => i.cls.id), [1, 3])
+  assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, coachId: '7' }).map((i) => i.cls.id), [1])
   assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, status: 'full' }).map((i) => i.cls.id), [2])
 })
 
 test('lọc ngày và khung giờ', () => {
   assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, date: '2026-10-25' }).map((i) => i.cls.id), [1])
   assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, slot: 'evening' }).map((i) => i.cls.id), [2])
-  assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, slot: 'morning' }).map((i) => i.cls.id), [1, 3])
+  assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, slot: 'morning' }).map((i) => i.cls.id), [1])
 })
 
 test('còn chỗ + các bộ lọc khác kết hợp với nhau', () => {
@@ -53,15 +53,44 @@ test('còn chỗ + các bộ lọc khác kết hợp với nhau', () => {
   assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, hasSeats: true, subject: 'Boxing' }), [])
 })
 
-test('bộ lọc rỗng trả về tất cả lớp', () => {
-  assert.equal(filterCatalog(items, EMPTY_FILTERS).length, 3)
+test('bộ lọc rỗng trả về các lớp chưa đóng', () => {
+  assert.equal(filterCatalog(items, EMPTY_FILTERS).length, 2)
 })
 
-test('trạng thái theo thời hạn đăng ký: chưa mở / đang mở / đã đóng', () => {
-  const dated = (extra) => buildCatalog({ classes: [{ id: 1, name: 'L', subject: 'Yoga', capacity: 5, ...extra }], schedules: [{ id: 1, classId: 1, startTime: '2026-11-02T07:00:00', endTime: '2026-11-02T08:00:00' }], available: [{ id: 1, registeredCount: 1, remainingSlots: 4 }], now })[0].status
-  assert.equal(dated({ registrationOpenAt: '2026-10-24', registrationCloseAt: '2026-10-29' }), 'upcoming')
-  assert.equal(dated({ registrationOpenAt: '2026-10-20', registrationCloseAt: '2026-10-29' }), 'open')
-  assert.equal(dated({ registrationOpenAt: '2026-10-10', registrationCloseAt: '2026-10-20' }), 'closed')
-  assert.equal(dated({ endDate: '2026-10-20' }), 'closed')
-  assert.equal(dated({}), 'open')
+test('vòng đời theo ngày: chưa mở → đang mở → đã đóng', () => {
+  const one = (extra, now2 = now) => buildCatalog({ classes: [{ id: 1, name: 'L', subject: 'Yoga', capacity: 5, ...extra }], schedules: [{ id: 1, classId: 1, startTime: '2026-11-02T07:00:00', endTime: '2026-11-02T08:00:00' }], available: [{ id: 1, registeredCount: 1, remainingSlots: 4 }], now: now2 })[0]
+  const dates = { startDate: '2026-10-30', endDate: '2026-12-30', registrationOpenAt: '2026-10-24', registrationCloseAt: '2026-10-29' }
+  // 21/10: chưa tới ngày mở đăng ký sớm → Chưa mở, chưa được đăng ký
+  assert.equal(one(dates).status, 'upcoming')
+  assert.equal(one(dates).canRegister, false)
+  // 25/10: đang trong thời gian đăng ký sớm → vẫn Chưa mở nhưng được đăng ký
+  const early = one(dates, new Date('2026-10-25T09:00:00+07:00'))
+  assert.equal(early.status, 'upcoming')
+  assert.equal(early.canRegister, true)
+  // 30/10: hết đăng ký sớm → chuyển sang Đang mở
+  assert.equal(one(dates, new Date('2026-10-30T09:00:00+07:00')).status, 'open')
+  assert.equal(one(dates, new Date('2026-10-30T09:00:00+07:00')).canRegister, true)
+  // sau ngày kết thúc lớp → Đã đóng
+  assert.equal(one(dates, new Date('2026-12-31T09:00:00+07:00')).status, 'closed')
+  // không có ngày thì suy theo buổi học
+  assert.equal(one({}).status, 'open')
+})
+
+test('lớp chưa có buổi học nào là Chưa mở; lớp đã đóng bị ẩn mặc định', () => {
+  const none = buildCatalog({ classes: [classes[0]], schedules: [], now })
+  assert.equal(none[0].status, 'upcoming')
+  assert.deepEqual(filterCatalog(items, EMPTY_FILTERS).map((i) => i.cls.id), [1, 2])
+  assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, showClosed: true }).map((i) => i.cls.id), [1, 2, 3])
+  assert.deepEqual(filterCatalog(items, { ...EMPTY_FILTERS, status: 'closed' }).map((i) => i.cls.id), [3])
+})
+
+test('khoảng ngày suy ra từ các buổi học của lớp', () => {
+  assert.equal(by(1).sessionCount, 1)
+  assert.equal(by(1).firstDate, '2026-10-25')
+  assert.equal(by(1).lastDate, '2026-10-25')
+  const many = buildCatalog({ classes: [classes[0]], schedules: [
+    { id: 1, classId: 1, startTime: '2026-11-05T07:00:00', endTime: '2026-11-05T08:00:00' },
+    { id: 2, classId: 1, startTime: '2026-10-31T07:00:00', endTime: '2026-10-31T08:00:00' },
+    { id: 3, classId: 1, startTime: '2026-12-30T07:00:00', endTime: '2026-12-30T08:00:00' }], now })[0]
+  assert.deepEqual([many.firstDate, many.lastDate, many.sessionCount], ['2026-10-31', '2026-12-30', 3])
 })

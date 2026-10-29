@@ -2,7 +2,8 @@ import { createApiClient, createControllerApi, mapPackage, mapSession, mapUser, 
 import { membershipStatus } from './membershipStatus.js'
 import { validateRegistration } from './publicService.js'
 import { normalizeCode } from '../validation/roomRules.js'
-
+import { FEATURES } from '../config/features.js'
+import { toPayloadStamp } from '../validation/classDates.js'
 // Luồng đăng nhập: Login.jsx → login(email, password) → authenticate('login', body)
 // → api.login(body) trong api.js → BE → lưu phiên → cập nhật giao diện.
 const SESSION_KEY = 'gymmaster-api-session-v1'
@@ -157,9 +158,9 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
       const version = generation
       if (snapshot.currentUser?.role !== 'member') throw new Error('Vui lòng đăng nhập bằng tài khoản hội viên.')
       const user = snapshot.currentUser
-      const [packages, rooms, classes, schedules, coaches, available, mine, memberships] = await Promise.all([
+      const [packages, rooms, classes, schedules, coaches, available, mine, memberships, classStats] = await Promise.all([
         api.packages.list(), api.rooms.list(), api.classes.list(), api.schedules.list(), api.coaches(), api.availableSessions(), api.enrollments(),
-        api.myMemberships(),
+        api.myMemberships(), FEATURES.classRegistration ? api.classStats() : Promise.resolve(null),
       ])
       assertCurrent(version)
       const lookup = { rooms, classes, schedules, coaches: coaches.map(mapUser) }
@@ -169,7 +170,7 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
         const conflict = enrollments.some(e => e.sessionId !== session.id && new Date(e.session.startTime) < new Date(session.endTime) && new Date(session.startTime) < new Date(e.session.endTime))
         return conflict ? { ...session, allowed: false, reason: 'Buổi học trùng với lịch tập đã đăng ký.' } : session
       })
-      return { user, packages: packages.map(mapPackage), memberships, status: membershipStatus(memberships), sessions, enrollments }
+      return { user, packages: packages.map(mapPackage), memberships, status: membershipStatus(memberships), sessions, enrollments, classStats }
     },
     purchase: paymentService.checkout,
     async enroll(id) {
@@ -178,6 +179,20 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
       assertCurrent(version)
       publish({ memberRevision: snapshot.memberRevision + 1 })
       return result
+    },
+        // Đăng ký / hủy đăng ký LỚP (FEATURES.classRegistration). Hủy lớp: BE cũng gỡ các buổi học sắp tới của lớp đó.
+    async registerClass(id) {
+      const version = generation
+      const result = await api.registerClass(id)
+      assertCurrent(version)
+      publish({ memberRevision: snapshot.memberRevision + 1 })
+      return result
+    },
+    async cancelClassRegistration(id) {
+      const version = generation
+      await api.cancelClassRegistration(id)
+      assertCurrent(version)
+      publish({ memberRevision: snapshot.memberRevision + 1 })
     },
     async cancelEnrollment(id) {
       const version = generation
@@ -207,7 +222,8 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     },
     deletePackage: id => remove('packages', 'packages', id),
     saveRoom: room => save('rooms', 'rooms', room, { roomCode: normalizeCode(room.roomCode), name: room.name.trim(), capacity: Number(room.capacity), type: room.type }),    deleteRoom: id => remove('rooms', 'rooms', id),
-    saveClass: cls => save('classes', 'classes', cls, {classCode: normalizeCode(cls.classCode), name: cls.name.trim(), subject: cls.subject, description: cls.description || '', capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null }),
+    saveClass: cls => save('classes', 'classes', cls, { classCode: normalizeCode(cls.classCode), name: cls.name.trim(), subject: cls.subject, description: cls.description || '', level: cls.level ?? null, capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null,
+  ...(FEATURES.classDates && { startDate: cls.startDate || null, endDate: cls.endDate || null, registrationOpenAt: toPayloadStamp(cls.registrationOpenAt, FEATURES.registrationTimes), registrationCloseAt: toPayloadStamp(cls.registrationCloseAt, FEATURES.registrationTimes) }) }),
     deleteClass: id => remove('classes', 'classes', id),
     saveSchedule: schedule => save('schedules', 'schedules', schedule, { classId: Number(schedule.classId), roomId: Number(schedule.roomId), coachId: schedule.coachId ? Number(schedule.coachId) : null, startTime: schedule.startTime, endTime: schedule.endTime }),
     deleteSchedule: id => remove('schedules', 'schedules', id),
