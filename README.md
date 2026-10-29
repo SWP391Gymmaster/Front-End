@@ -1,10 +1,10 @@
 ## FE1 Auth & Public update (2026-10-18)
 
-Open `/#/home`, `/#/register`, `/#/login` or `/#/verify` while logged out. The public home describes Gym, Yoga and Boxing without loading or showing the class list. Visitors must sign in to see classes and schedules. Registration creates an account only and does not start a session or open package checkout.
+Open `/#/home`, `/#/register`, and `/#/login` while logged out; email links open `/verify-email?token=...`. The public home describes Gym, Yoga and Boxing without loading or showing the class list. Visitors must sign in to see classes and schedules. Registration creates an account only and does not start a session or open package checkout.
 
-Registration now opens an OTP dialog after the backend sends a real Gmail message. Configure `GMAIL_USERNAME` and `GMAIL_APP_PASSWORD` in the backend run environment; setup steps are in [Gmail OTP setup](../Back-End/docs/GMAIL_OTP_SETUP.md). Authenticated class data uses the existing protected role pages and APIs. See [FE1 API handoff](docs/FE1_API_HANDOFF.md), [QA checklist](docs/QA_CHECKLIST.md), [task list 1](docs/FE1_TASK_LIST_IMPLEMENTATION.md), [task list 2](docs/FE1_TASK_LIST_HANDOFF.md) and [review notes](docs/FE1_REVIEW_NOTES.md). Existing Spring REST architecture remains; no Thymeleaf controllers were added.
+Registration shows instructions to check email. BE sends a single-use verification link; FE submits its token to `/auth/verify-email`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and `FRONTEND_BASE_URL` in the backend environment (use a Gmail App Password for `SMTP_PASSWORD`). Authenticated class data uses the existing protected role pages and APIs. See [FE1 API handoff](docs/FE1_API_HANDOFF.md), [QA checklist](docs/QA_CHECKLIST.md), [task list 1](docs/FE1_TASK_LIST_IMPLEMENTATION.md), [task list 2](docs/FE1_TASK_LIST_HANDOFF.md) and [review notes](docs/FE1_REVIEW_NOTES.md). Existing Spring REST architecture remains; no Thymeleaf controllers were added.
 
-Run `npm run test:public` for offline contract checks. Browser fixtures mock OTP replies and do not verify real email delivery. No auto-login token from registration is stored.
+Run `npm run test:public` for offline contract checks. Browser fixtures mock verification-link responses and do not verify real email delivery. No auto-login token from registration is stored.
 
 # GymMaster Front-End
 
@@ -47,7 +47,7 @@ Khởi động lại Vite sau khi thay env. `BACKEND_URL` chỉ dành cho proxy 
 - Member: đọc danh mục gói, xem các buổi còn chỗ và lịch riêng, đăng ký/hủy buổi qua ID lịch thật. BE kiểm tra gói còn hiệu lực và sức chứa.
 - Member: chọn gói và phương thức để tạo thanh toán chờ xác nhận; xem lịch sử/chi tiết thanh toán, hóa đơn; đọc các gói đã mua và cảnh báo hết hạn/sắp hết hạn (7 ngày, bao gồm hôm nay).
 - Manager và Receptionist: màn hình thanh toán/hóa đơn, thu tiền mặt cho ID hội viên có sẵn, xác nhận đã nhận tiền hoặc hủy giao dịch đang chờ. Tìm kiếm trên danh sách giao dịch đã tải.
-- Thanh toán online hiện là **mô phỏng** qua `simulate-pay`, không phải tích hợp VNPay/MoMo/thẻ thật. Nút mô phỏng có xác nhận riêng và vẫn kích hoạt/gia hạn membership trong database. Tiền mặt do nhân viên xác nhận.
+- VNPay now uses the backend payment URL endpoint and redirects to the configured VNPay provider/sandbox. Other online methods may still use `simulate-pay`; they are not real provider integrations. Tiền mặt do nhân viên xác nhận.
 - Nút kiểm tra kết nối gọi `/api/test`; kiểm tra quyền vai trò gọi `/{role}/dashboard`.
 - Loading, lỗi/thử lại và thông báo thành công chỉ sau khi request thành công. Có hộp thoại xác nhận xóa.
 

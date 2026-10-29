@@ -2,12 +2,12 @@
 
 | Owner | Work | Acceptance / evidence | Status |
 |---|---|---|---|
-| FE1 | Account-only registration | POST only creates account; no session storage, no checkout/enroll request | Implemented; contract test |
-| BE1 | RegisterDTO validation | Enforce phone, strong password, confirmation and username server-side | Pending |
-| BE1 | Email OTP + Gmail | Hashed one-time codes, expiry, attempt limit, resend cooldown, login enforcement, Gmail SMTP endpoints | Implemented; SMTP credentials must be configured in the run environment |
-| BE1 | Public classes | Existing authenticated class and schedule APIs | Connected; no anonymous endpoint |
-| FE1 + BE1 | Connect OTP APIs | Register, verify OTP, resend OTP through `/auth/*` | Connected; real Gmail delivery requires local SMTP setup |
-| FE1 | UI evidence | Desktop/mobile and verification states; label stubbed cases | See QA checklist |
+| FE1 | Account-only registration | POST creates account only; no session, checkout, or enrollment | Implemented; contract test |
+| BE1 | Register validation | Validate phone, strong password, confirmation, and username server-side | Pending confirmation from BE1 |
+| BE1 | Email verification link | Single-use token, expiry, login enforcement, SMTP delivery | Implemented in current BE; SMTP must be configured in runtime environment |
+| FE1 | Public pages | Home with disciplines/packages; anonymous class list requires login because BE has no public endpoint | Implemented |
+| FE1 + BE1 | Connect email verification APIs | Register, verify token, resend link through `/auth/*` | Connected; real Gmail delivery requires SMTP setup |
+| FE1 | UI evidence | Desktop/mobile and link verification states; clearly label mocked cases | See QA checklist |
 | Each member | Update own two task lists | Actual owner, work, completion and evidence | Team action |
 | FE1 | Consolidate and submit | Confirm required format/deadline, gather all members' rows, send to teacher | Draft prepared only; not submitted |
 

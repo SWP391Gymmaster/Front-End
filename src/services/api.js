@@ -110,8 +110,39 @@ export function createControllerApi(request) {
     register: body => request('/auth/register', { method: 'POST', body, auth: false }),
     health: () => request('/api/test', { auth: false }),
     roleDashboard: role => request(`/${role}/dashboard`),
-    packages: resource('/api/membership-packages'), rooms: resource('/api/rooms'), classes: resource('/api/classes'), schedules: resource('/api/schedules'),
+    packages: {
+      ...resource('/api/membership-packages'),
+      active: () => request('/api/membership-packages/active'),
+      byCode: code => request(`/api/membership-packages/by-code/${encodeURIComponent(code)}`),
+      suspend: id => request(`/api/membership-packages/${encodeURIComponent(id)}/suspend`, { method: 'PATCH' }),
+      activate: id => request(`/api/membership-packages/${encodeURIComponent(id)}/activate`, { method: 'PATCH' }),
+    },
+    rooms: {
+      ...resource('/api/rooms'),
+      schedules: id => request(`/api/rooms/${encodeURIComponent(id)}/schedules`),
+    },
+    classes: resource('/api/classes'), schedules: resource('/api/schedules'),
     coaches: () => request('/api/coaches'),
+    adminUsers: {
+      list: ({ page = 0, size = 20, q = '', role = '', enabled = '', emailVerified = '' } = {}) => {
+        const query = new URLSearchParams({ page, size })
+        if (q.trim()) query.set('q', q.trim())
+        if (role) query.set('role', role)
+        if (enabled !== '') query.set('enabled', enabled)
+        if (emailVerified !== '') query.set('emailVerified', emailVerified)
+        return request(`/api/admin/users?${query}`)
+      },
+      get: id => request(`/api/admin/users/${encodeURIComponent(id)}`),
+      create: body => request('/api/admin/users', { method: 'POST', body }),
+      update: (id, body) => request(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
+      setStatus: (id, enabled) => request(`/api/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { enabled } }),
+      deactivate: id => request(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+      resendVerification: id => request(`/api/admin/users/${encodeURIComponent(id)}/verification-email`, { method: 'POST' }),
+    },
+    vnpay: {
+      createPaymentUrl: body => request('/api/vnpay/create-payment-url', { method: 'POST', body }),
+      mockSuccess: code => request(`/api/vnpay/mock-success/${encodeURIComponent(code)}`, { method: 'POST' }),
+    },
     myMemberships: () => request('/api/member/memberships'),
     checkout: body => request('/api/member/payments/checkout', { method: 'POST', body }),
     simulatePayment: id => request(`/api/member/payments/${encodeURIComponent(id)}/simulate-pay`, { method: 'POST' }),
@@ -137,8 +168,8 @@ export function createControllerApi(request) {
     cancelClassRegistration: id => request(`/api/member/classes/${encodeURIComponent(id)}/registration`, { method: 'DELETE' }),
   }
 }
-export const mapPackage = p => ({ ...p, days: p.durationDays })
-export const packagePayload = p => ({ name: p.name.trim(), description: p.description || '', price: Number(p.price), durationDays: Number(p.days), active: Boolean(p.active) })
+export const mapPackage = p => ({ ...p, active: p.active ?? p.status === 'ACTIVE', days: p.durationDays })
+export const packagePayload = p => ({ packageCode: p.packageCode?.trim(), name: p.name.trim(), description: p.description || '', price: Number(p.price), durationDays: Number(p.days), active: Boolean(p.active) })
 export const mapUser = u => ({ id: u.userId ?? u.id, name: u.fullName, email: u.email, role: u.role.toLowerCase(), phone: u.phone || '' })
 export const vietnamTime = value => !value || /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}+07:00`
 export function mapSession(value, { classes = [], rooms = [], coaches = [], schedules = [] } = {}) {

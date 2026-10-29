@@ -33,6 +33,11 @@ export default function BuyPackage({ goTo }) {
     setError('')
 
     try {
+      if (method === 'VNPAY') {
+        const paymentUrl = await paymentService.createVnpayUrl({ packageId: selected.id, orderInfo: note })
+        window.location.assign(paymentUrl)
+        return
+      }
       await paymentService.checkout({
         packageId: selected.id,
         paymentMethod: method,
@@ -128,7 +133,7 @@ export default function BuyPackage({ goTo }) {
             </label>
 
             <p className="small muted">
-              {t('Tạo yêu cầu chưa trừ tiền và chưa kích hoạt gói. Thanh toán online hiện chỉ hỗ trợ mô phỏng.')}
+              {method === 'VNPAY' ? t('Bạn sẽ được chuyển sang cổng VNPay Sandbox để thanh toán.') : t('Tạo yêu cầu chưa trừ tiền và chưa kích hoạt gói. Phương thức này hiện hỗ trợ mô phỏng.')}
             </p>
 
             {error && (

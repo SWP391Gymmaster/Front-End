@@ -56,7 +56,8 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     try {
       const [packages, rooms, classes, schedules, coaches] = await Promise.all([
         api.packages.list(), api.rooms.list(), api.classes.list(),
-        api.schedules.list(user.role === 'coach' ? `?coachId=${user.id}` : ''), api.coaches(), api.roleDashboard(user.role),
+        api.schedules.list(user.role === 'coach' ? `?coachId=${user.id}` : ''), api.coaches(),
+        user.role === 'admin' ? Promise.resolve(null) : api.roleDashboard(user.role),
       ])
       assertCurrent(version)
       if (id !== refreshId) return
@@ -130,6 +131,14 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     getInvoice: id => financeRead(member => api.invoices.get(id, member)),
     checkout: data => financeWrite(() => api.checkout({ packageId: Number(data.packageId), paymentMethod: data.paymentMethod, note: data.note || '' })),
     simulate: id => financeWrite(() => api.simulatePayment(id)),
+    async createVnpayUrl(data) {
+      const version = generation
+      const result = await api.vnpay.createPaymentUrl({ packageId: Number(data.packageId), orderInfo: data.orderInfo || '' })
+      assertCurrent(version)
+      if (!result?.paymentUrl) throw new Error('Back-End không trả về đường dẫn thanh toán VNPay.')
+      return result.paymentUrl
+    },
+    mockVnpay: code => financeWrite(() => api.vnpay.mockSuccess(code)),
     cashCheckout: data => financeWrite(() => api.payments.cashCheckout({ memberId: Number(data.memberId), packageId: Number(data.packageId), note: data.note || '' })),
     confirm: (id, data) => financeWrite(() => api.payments.confirm(id, data)),
     cancel: (id, reason) => financeWrite(() => api.payments.cancel(id, reason)),
@@ -201,7 +210,16 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     login: (email, password) => authenticate('login', { email: email.trim(), password }),
     logout: () => logout(),
     savePackage: pkg => save('packages', 'packages', pkg, packagePayload(pkg), mapPackage),
-    togglePackage: id => { const pkg = snapshot.packages.find(p => p.id === id); return save('packages', 'packages', pkg, packagePayload({ ...pkg, active: !pkg.active }), mapPackage) },
+    async togglePackage(id) {
+      const version = generation
+      const pkg = snapshot.packages.find(p => p.id === id)
+      if (!pkg) throw new Error('Không tìm thấy gói tập.')
+      const result = pkg.active ? await api.packages.suspend(id) : await api.packages.activate(id)
+      assertCurrent(version)
+      const item = mapPackage(result)
+      publish({ packages: [...snapshot.packages.filter(value => value.id !== item.id), item], memberRevision: snapshot.memberRevision + 1 })
+      return item
+    },
     deletePackage: id => remove('packages', 'packages', id),
     saveRoom: room => save('rooms', 'rooms', room, { roomCode: normalizeCode(room.roomCode), name: room.name.trim(), capacity: Number(room.capacity), type: room.type }),    deleteRoom: id => remove('rooms', 'rooms', id),
     saveClass: cls => save('classes', 'classes', cls, { classCode: normalizeCode(cls.classCode), name: cls.name.trim(), subject: cls.subject, description: cls.description || '', level: cls.level ?? null, capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null,
