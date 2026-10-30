@@ -1,6 +1,7 @@
 // Luật nghiệp vụ cho Lớp học và Buổi học (T2.4). Hàm thuần để test bằng node --test.
-import { codeProblem, roomMatchesSubject, roomTypeLabel } from './roomRules.js'
+import { codeProblem, normalizeCode, roomMatchesSubject, roomTypeLabel } from './roomRules.js'
 import { validateClassDates } from './classDates.js'
+import { codePrefix } from '../config/classDefaults.js'
 
 export { validateClassDates }
 
@@ -9,12 +10,25 @@ const minute = (value) => String(value).slice(0, 16)
 const hhmm = (value) => String(value).slice(11, 16)
 const dm = (value) => `${String(value).slice(8, 10)}/${String(value).slice(5, 7)}`
 
+// Mã lớp: A-Z, 0-9, "-", 3-32 ký tự (codeProblem), không kết thúc bằng "-" và không được chỉ có tiền tố bộ môn.
+// originalCode = mã gốc khi sửa lớp; sửa mà không đổi mã thì bỏ qua hai luật mới, chỉ giữ codeProblem.
+export function classCodeProblem(value, subject, originalCode) {
+  const code = normalizeCode(value)
+  const unchanged = originalCode != null && normalizeCode(originalCode) === code
+  if (!unchanged) {
+    const prefix = codePrefix(subject)
+    if (code && (code === prefix || code === prefix.slice(0, -1))) return `Mã lớp cần thêm phần riêng sau tiền tố ${prefix} (ví dụ ${prefix}AM).`
+    if (code.endsWith('-')) return 'Mã lớp không được kết thúc bằng dấu gạch ngang.'
+  }
+  return codeProblem(value, 'Mã lớp')
+}
+
 // Lớp: mã, tên, sĩ số; khi sửa còn phải khớp với các phòng đã xếp lịch.
 // usedRooms = các phòng mà lớp này đang dùng trong lịch (có thể rỗng khi tạo mới).
 // dateOptions: xem validateClassDates (now, original, timed, requireDates).
 export function validateClass(form, usedRooms = [], dateOptions = {}) {
   const errors = []
-  const code = codeProblem(form.classCode, 'Mã lớp')
+  const code = classCodeProblem(form.classCode, form.subject, dateOptions.original?.classCode)
   if (code) errors.push(code)
   if (!String(form.name ?? '').trim()) errors.push('Tên lớp không được để trống.')
   const capacity = Number(form.capacity)
