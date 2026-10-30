@@ -7,6 +7,12 @@
 .catalog-card h3 { font-size: 17px; margin: 0; }
 .catalog-card p { margin: 0; font-size: 13px; color: var(--muted); }
 .catalog-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.code-suggest { display: flex; flex-direction: column; gap: 6px; }
+.code-suggest-box { position: relative; display: flex; flex-direction: column; }
+.code-suggest-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; list-style: none; margin: 4px 0 0; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); max-height: 260px; overflow-y: auto; }
+.code-suggest-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.code-suggest-list li.active { background: var(--primary-soft); }
+.code-suggest-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .catalog-session-msg { flex-basis: 100%; margin: 0; }
 .catalog-session-msg .btn { margin-top: 8px; }
 .catalog-sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
