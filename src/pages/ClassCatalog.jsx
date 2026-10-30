@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import ClassFormModal from './catalog/ClassFormModal'
 import SessionFormModal from './catalog/SessionFormModal'
 import { formatDate, formatTime } from '../store/utils'
+import { FEATURES } from '../config/features'
 import { STATUS, TIME_SLOTS, EMPTY_FILTERS, buildCatalog, filterCatalog, hasActiveFilter } from '../catalog/catalogRules'
 
 const dmy = v => formatDate(v)
@@ -155,7 +156,8 @@ function CatalogView({ available, enrolledIds = [], classStats = null, membershi
             const needClass = Boolean(detail.classStat) && !detail.classStat.registeredByMe
             const label = blocked ? STATUS[detail.status].label : needClass ? 'Cần đăng ký lớp' : s.closed ? 'Đã đóng' : s.full ? 'Đã đầy' : mine ? 'Đã đăng ký' : 'Đăng ký'
             return <li key={s.id}>
-              <span><strong>{formatDate(s.startTime)}</strong> {formatTime(s.startTime)}–{formatTime(s.endTime)} · {roomName(s.roomId)}<br /><span className="muted">{s.closed ? 'Buổi học đã bắt đầu' : seatText(s, detail.cls.capacity)}</span></span>
+              <span><strong>{formatDate(s.startTime)}</strong> {formatTime(s.startTime)}–{formatTime(s.endTime)} · {roomName(s.roomId)}<br /><span className="muted">{s.closed ? 'Buổi học đã bắt đầu' : seatText(s, detail.cls.capacity)}</span>
+                {FEATURES.sessionDescription && s.description && <span className="catalog-session-desc small muted" title={s.description}>{s.description}</span>}</span>
               {canManage && <span className="catalog-session-actions"><button className="btn btn-sm" onClick={() => setSessionForm({ session: s })}>Sửa</button><button className="btn btn-sm btn-ghost" onClick={() => { setConfirm({ kind: 'session', item: s }); setConfirmError('') }}>Xóa</button></span>}
               {isMember && <button className="btn btn-primary btn-sm" disabled={busy || needClass || blocked || s.closed || s.full || mine} onClick={() => enroll(s)}>{label}</button>}
               {sessionMsg?.id === s.id && <div className={`alert alert-${sessionMsg.type} catalog-session-msg`} role={sessionMsg.type === 'error' ? 'alert' : 'status'}>{sessionMsg.text}

@@ -61,7 +61,11 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
       ])
       assertCurrent(version)
       if (id !== refreshId) return
-      publish({ packages: packages.map(mapPackage), rooms, classes, schedules, users: [...coaches.map(mapUser).filter(u => u.id !== user.id), snapshot.currentUser], loading: false, loadError: '', memberRevision: snapshot.memberRevision + 1 })
+      // Danh sách coach (kèm subjects) lấy từ GET /api/coaches. Nếu người đang đăng nhập là coach thì dùng currentUser
+      // nhưng ghép subjects từ /api/coaches theo id (phản hồi đăng nhập không có subjects).
+      const coachList = coaches.map(mapUser)
+      const self = coachList.find(u => u.id === user.id)
+      publish({ packages: packages.map(mapPackage), rooms, classes, schedules, users: [...coachList.filter(u => u.id !== user.id), self ? { ...snapshot.currentUser, subjects: self.subjects } : snapshot.currentUser], loading: false, loadError: '', memberRevision: snapshot.memberRevision + 1 })
     } catch (error) {
       if (version === generation && id === refreshId) publish({ loading: false, loadError: error.message })
     }
@@ -225,7 +229,17 @@ export function createBackendStore({ baseUrl = '/backend', sessionStorage = glob
     saveClass: cls => save('classes', 'classes', cls, { classCode: normalizeCode(cls.classCode), name: cls.name.trim(), subject: cls.subject, description: cls.description || '', level: cls.level ?? null, capacity: Number(cls.capacity), coachId: cls.coachId ? Number(cls.coachId) : null,
   ...(FEATURES.classDates && { startDate: cls.startDate || null, endDate: cls.endDate || null, registrationOpenAt: toPayloadStamp(cls.registrationOpenAt, FEATURES.registrationTimes), registrationCloseAt: toPayloadStamp(cls.registrationCloseAt, FEATURES.registrationTimes) }) }),
     deleteClass: id => remove('classes', 'classes', id),
-    saveSchedule: schedule => save('schedules', 'schedules', schedule, { classId: Number(schedule.classId), roomId: Number(schedule.roomId), coachId: schedule.coachId ? Number(schedule.coachId) : null, startTime: schedule.startTime, endTime: schedule.endTime }),
+    saveSchedule: schedule => save('schedules', 'schedules', schedule, { classId: Number(schedule.classId), roomId: Number(schedule.roomId), coachId: schedule.coachId ? Number(schedule.coachId) : null, startTime: schedule.startTime, endTime: schedule.endTime,
+      ...(FEATURES.sessionDescription && { description: String(schedule.description ?? '').trim() || null }) }),
+    // FEATURES.coachSubjects: lưu bộ môn của coach rồi cập nhật coach trong danh sách users (nếu đang có).
+    async saveCoachSubjects(id, subjects) {
+      const version = generation
+      const result = await api.saveCoachSubjects(id, subjects)
+      assertCurrent(version)
+      const saved = Array.isArray(result?.subjects) ? result.subjects : subjects
+      publish({ users: snapshot.users.map(u => String(u.id) === String(id) ? { ...u, subjects: saved } : u) })
+      return result
+    },
     deleteSchedule: id => remove('schedules', 'schedules', id),
     // Avatar is intentionally browser-local until BE exposes a profile endpoint.
     updateProfile(id, data) {

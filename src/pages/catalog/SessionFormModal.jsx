@@ -1,25 +1,29 @@
 import { useState } from 'react'
 import Modal from '../../components/Modal'
 import { useStore } from '../../store/context'
+import { FEATURES } from '../../config/features'
 import { roomMatchesSubject } from '../../validation/roomRules'
-import { validateSchedule } from '../../validation/classRules'
+import { SESSION_DESCRIPTION_MAX, coachTeaches, validateSchedule } from '../../validation/classRules'
 
 // Thêm hoặc sửa một buổi học của lớp. Ô phòng chỉ liệt kê phòng hợp bộ môn của lớp.
+// FEATURES.coachSubjects: ô HLV chỉ liệt kê coach dạy bộ môn của lớp. FEATURES.sessionDescription: thêm ô lộ trình / mô tả.
 export default function SessionFormModal({ cls, session, onClose }) {
   const { users, rooms, schedules, classes, saveSchedule } = useStore()
   const [form, setForm] = useState(() => session
-    ? { id: session.id, classId: cls.id, roomId: session.roomId ?? '', coachId: session.coachId ?? '', startTime: String(session.startTime).slice(0, 16), endTime: String(session.endTime).slice(0, 16) }
-    : { classId: cls.id, roomId: '', coachId: '', startTime: '', endTime: '' })
+    ? { id: session.id, classId: cls.id, roomId: session.roomId ?? '', coachId: session.coachId ?? '', startTime: String(session.startTime).slice(0, 16), endTime: String(session.endTime).slice(0, 16), description: session.description ?? '' }
+    : { classId: cls.id, roomId: '', coachId: '', startTime: '', endTime: '', description: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const coaches = users.filter(u => u.role === 'coach')
+  // Coach đang chọn mà sai môn (dữ liệu cũ) vẫn hiện để biết, nhưng không chọn lại được.
+  const coachList = coaches.filter(c => !FEATURES.coachSubjects || coachTeaches(c, cls.subject) || String(c.id) === String(form.coachId))
   const set = (key, value) => setForm({ ...form, [key]: value })
   const roomList = rooms.filter(r => roomMatchesSubject(r, cls.subject) || String(r.id) === String(form.roomId))
   const submit = async event => {
     event.preventDefault()
     if (busy) return
     const room = rooms.find(r => String(r.id) === String(form.roomId))
-    const problems = validateSchedule(form, cls, room, { schedules, classes })
+    const problems = validateSchedule(form, cls, room, { schedules, classes, coaches })
     if (problems.length) { setError(problems.join(' ')); return }
     setBusy(true); setError('')
     try { await saveSchedule(form); onClose() } catch (err) { setError(err.message) } finally { setBusy(false) }
@@ -29,9 +33,15 @@ export default function SessionFormModal({ cls, session, onClose }) {
       <p className="small muted">Lớp: <strong>{cls.name}</strong> ({cls.subject})</p>
       <fieldset className="form api-fieldset" disabled={busy}>
         <label>Phòng (lọc theo bộ môn)<select required value={form.roomId} onChange={e => set('roomId', e.target.value)}><option value="">-- Chọn phòng --</option>{roomList.map(r => <option key={r.id} value={r.id}>{r.name} ({r.capacity} chỗ)</option>)}</select></label>
-        <label>Huấn luyện viên<select value={form.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Theo huấn luyện viên của lớp</option>{coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        <label>{FEATURES.coachSubjects ? 'Huấn luyện viên (lọc theo bộ môn)' : 'Huấn luyện viên'}<select value={form.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Theo huấn luyện viên của lớp</option>
+          {coachList.map(c => { const wrong = FEATURES.coachSubjects && !coachTeaches(c, cls.subject); return <option key={c.id} value={c.id} disabled={wrong}>{wrong ? `${c.name} (không dạy ${cls.subject})` : c.name}</option> })}
+        </select></label>
         <label>Ngày giờ bắt đầu<input type="datetime-local" required value={form.startTime} onChange={e => set('startTime', e.target.value)} /></label>
         <label>Ngày giờ kết thúc<input type="datetime-local" required value={form.endTime} onChange={e => set('endTime', e.target.value)} /></label>
+        {FEATURES.sessionDescription && <label>Lộ trình / mô tả buổi học
+          <textarea rows={4} maxLength={SESSION_DESCRIPTION_MAX} value={form.description} onChange={e => set('description', e.target.value)} placeholder="VD: Khởi động 10 phút, bài chính, giãn cơ..." />
+          <span className="small muted">{form.description.length}/{SESSION_DESCRIPTION_MAX} ký tự</span>
+        </label>}
       </fieldset>
       {error && <div className="alert alert-error" role="alert">{error}</div>}
       <div className="form-actions"><button type="button" className="btn" disabled={busy} onClick={onClose}>Hủy</button><button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Đang xử lý...' : 'Lưu buổi học'}</button></div>

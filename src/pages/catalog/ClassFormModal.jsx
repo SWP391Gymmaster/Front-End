@@ -3,7 +3,7 @@ import Modal from '../../components/Modal'
 import { useStore } from '../../store/context'
 import { SUBJECTS } from '../../data/seed'
 import { FEATURES } from '../../config/features'
-import { classWarnings, sameAssignment, validateClass } from '../../validation/classRules'
+import { classWarnings, coachTeaches, sameAssignment, validateClass } from '../../validation/classRules'
 import { coachIsFull, coachLoad } from '../../validation/classDuplicates'
 import { addDays, toFormDate, toFormStamp, vnStamp } from '../../validation/classDates'
 import { codePrefix, MAX_CLASSES_PER_COACH, subjectDefaults } from '../../config/classDefaults'
@@ -47,10 +47,16 @@ export default function ClassFormModal({ cls, onClose }) {
   const coaches = users.filter(u => u.role === 'coach')
   // Số lớp khác của coach giao với khoảng ngày đang nhập (chưa đủ ngày thì đếm mọi lớp chưa đóng).
   const loadOf = (coachId, f) => coachLoad(coachId, classes, { startDate: f.startDate, endDate: f.endDate, excludeId: f.id })
-  // Coach đang chọn trở nên đủ lớp (do đổi ngày / chép mẫu) thì bỏ chọn và báo nhẹ.
+  // Coach đang chọn không còn hợp lệ thì bỏ chọn và báo nhẹ: không dạy bộ môn (FEATURES.coachSubjects, khi đổi môn / chép mẫu)
+  // hoặc đã đủ lớp (khi đổi ngày / chép mẫu).
   const checkCoach = next => {
-    if (!next.coachId || sameAssignment(next, original) || !coachIsFull(loadOf(next.coachId, next))) return next
+    if (!next.coachId) return next
     const name = coaches.find(c => String(c.id) === String(next.coachId))?.name || `#${next.coachId}`
+    if (FEATURES.coachSubjects && next.subject !== form.subject && !coachTeaches(coaches.find(c => String(c.id) === String(next.coachId)), next.subject)) {
+      setCoachNote(`Đã bỏ chọn HLV ${name} vì không dạy bộ môn ${next.subject}.`)
+      return { ...next, coachId: '' }
+    }
+    if (sameAssignment(next, original) || !coachIsFull(loadOf(next.coachId, next))) return next
     setCoachNote(`Đã bỏ chọn HLV ${name} vì đã đủ ${MAX_CLASSES_PER_COACH}/${MAX_CLASSES_PER_COACH} lớp trong khoảng thời gian này.`)
     return { ...next, coachId: '' }
   }
@@ -58,7 +64,7 @@ export default function ClassFormModal({ cls, onClose }) {
     if (creating && key in touched && !touched[key]) setTouched({ ...touched, [key]: true })
     if (key === 'coachId') setCoachNote('')
     const next = { ...form, [key]: value }
-    setForm(key === 'startDate' || key === 'endDate' ? checkCoach(next) : next)
+    setForm(key === 'startDate' || key === 'endDate' || key === 'subject' ? checkCoach(next) : next)
   }
   // Đổi bộ môn khi tạo mới: thay tiền tố cũ bằng tiền tố mới (giữ phần đã gõ phía sau); sĩ số theo môn nếu chưa tự sửa.
   const changeSubject = subject => {
@@ -66,7 +72,7 @@ export default function ClassFormModal({ cls, onClose }) {
     const oldPrefix = codePrefix(form.subject)
     const classCode = !touched.classCode ? codePrefix(subject)
       : form.classCode.toUpperCase().startsWith(oldPrefix) ? codePrefix(subject) + form.classCode.slice(oldPrefix.length) : form.classCode
-    setForm({ ...form, subject, classCode, capacity: touched.capacity ? form.capacity : subjectDefaults(subject).capacity })
+    setForm(checkCoach({ ...form, subject, classCode, capacity: touched.capacity ? form.capacity : subjectDefaults(subject).capacity }))
   }
   // Gợi ý mã lớp (chỉ khi tạo mới), trạng thái lấy từ cùng logic với trang Danh sách lớp.
   const statusById = creating ? new Map(buildCatalog({ classes, schedules }).map(i => [i.cls.id, i.status])) : null
@@ -148,14 +154,21 @@ export default function ClassFormModal({ cls, onClose }) {
   const capacityField = field('capacity', 'Sĩ số tối đa', { type: 'number', min: 1, step: 1, required: true })
   // HLV kèm số lớp theo ngày đang nhập: còn chỗ và ít lớp lên trước; đủ lớp thì không chọn được
   // (trừ khi đang sửa lớp mà giữ nguyên HLV và ngày như cũ).
-  const coachRows = coaches.map(c => {
-    const n = loadOf(c.id, form)
-    return { c, n, full: coachIsFull(n) && !sameAssignment({ ...form, coachId: c.id }, original) }
-  }).sort((a, b) => a.full - b.full || a.n - b.n || String(a.c.name).localeCompare(String(b.c.name), 'vi'))
+  // FEATURES.coachSubjects: chỉ liệt kê coach dạy bộ môn của lớp (coach đang chọn mà sai môn vẫn hiện nhưng không chọn lại được).
+  const coachRows = coaches
+    .filter(c => !FEATURES.coachSubjects || coachTeaches(c, form.subject) || String(c.id) === String(form.coachId))
+    .map(c => {
+      const n = loadOf(c.id, form)
+      const wrongSubject = FEATURES.coachSubjects && !coachTeaches(c, form.subject)
+      return { c, n, wrongSubject, full: coachIsFull(n) && !sameAssignment({ ...form, coachId: c.id }, original) }
+    }).sort((a, b) => a.full - b.full || a.n - b.n || String(a.c.name).localeCompare(String(b.c.name), 'vi'))
+  const coachText = ({ c, n, full, wrongSubject }) => wrongSubject ? `${c.name} (không dạy ${form.subject})`
+    : full ? `${c.name} (đủ ${MAX_CLASSES_PER_COACH}/${MAX_CLASSES_PER_COACH})` : `${c.name} (${n}/${MAX_CLASSES_PER_COACH} lớp)`
   const coachField = <div className="code-suggest">
     <label>Huấn luyện viên<select value={form.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Chưa phân công</option>
-      {coachRows.map(({ c, n, full }) => <option key={c.id} value={c.id} disabled={full}>{full ? `${c.name} (đủ ${MAX_CLASSES_PER_COACH}/${MAX_CLASSES_PER_COACH})` : `${c.name} (${n}/${MAX_CLASSES_PER_COACH} lớp)`}</option>)}
+      {coachRows.map(row => <option key={row.c.id} value={row.c.id} disabled={row.full || row.wrongSubject}>{coachText(row)}</option>)}
     </select></label>
+    {FEATURES.coachSubjects && !coachRows.some(r => !r.wrongSubject) && <p className="small muted">Chưa có huấn luyện viên nào dạy bộ môn {form.subject}.</p>}
     {coachNote && <p className="small muted" role="status">{coachNote}</p>}
   </div>
   const warnings = classWarnings(form, { classes, original })

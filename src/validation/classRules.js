@@ -3,6 +3,7 @@ import { codeProblem, normalizeCode, roomMatchesSubject, roomTypeLabel } from '.
 import { validateClassDates, vnStamp } from './classDates.js'
 import { codePrefix, MAX_CLASSES_PER_COACH } from '../config/classDefaults.js'
 import { coachIsFull, coachLoad, findDuplicate, findOverlaps } from './classDuplicates.js'
+import { FEATURES } from '../config/features.js'
 
 export { validateClassDates }
 
@@ -22,6 +23,19 @@ export function classCodeProblem(value, subject, originalCode) {
     if (code.endsWith('-')) return 'Mã lớp không được kết thúc bằng dấu gạch ngang.'
   }
   return codeProblem(value, 'Mã lớp')
+}
+
+// FEATURES.coachSubjects: coach chỉ dạy bộ môn có trong subjects; coach không có subjects thì không dạy môn nào.
+export const coachTeaches = (coach, subject) => Array.isArray(coach?.subjects) && coach.subjects.includes(subject)
+
+// Lỗi khi coach không dạy bộ môn (chỉ khi bật cờ và có chọn coach). enabled mặc định theo FEATURES.coachSubjects.
+export function coachSubjectProblem(coachId, subject, coaches = [], enabled = FEATURES.coachSubjects) {
+  if (!enabled || coachId == null || coachId === '') return ''
+  const coach = coaches.find((c) => String(c.id) === String(coachId))
+  const name = coach?.name || `#${coachId}`
+  if (!coach?.subjects?.length) return `Huấn luyện viên ${name} chưa được phân công bộ môn nào nên chưa thể nhận lớp.`
+  if (!coachTeaches(coach, subject)) return `Huấn luyện viên ${name} không dạy bộ môn ${subject}.`
+  return ''
 }
 
 const classLabel = (c) => `${c.classCode} – ${c.name}`
@@ -53,7 +67,8 @@ export function classWarnings(form, { classes = [], original = null, today } = {
 
 // Lớp: mã, tên, sĩ số; khi sửa còn phải khớp với các phòng đã xếp lịch.
 // usedRooms = các phòng mà lớp này đang dùng trong lịch (có thể rỗng khi tạo mới).
-// dateOptions: xem validateClassDates (now, original, timed, requireDates); thêm classes, coaches cho luật coach (coachProblems).
+// dateOptions: xem validateClassDates (now, original, timed, requireDates); thêm classes, coaches cho luật coach (coachProblems)
+// và coachSubjects (mặc định FEATURES.coachSubjects) cho luật coach theo bộ môn.
 export function validateClass(form, usedRooms = [], dateOptions = {}) {
   const errors = []
   const code = classCodeProblem(form.classCode, form.subject, dateOptions.original?.classCode)
@@ -72,6 +87,8 @@ export function validateClass(form, usedRooms = [], dateOptions = {}) {
     const today = dateOptions.today || (dateOptions.now ? vnStamp(dateOptions.now).slice(0, 10) : undefined)
     errors.push(...coachProblems(form, { classes: dateOptions.classes, coaches: dateOptions.coaches, original: dateOptions.original, today }))
   }
+  const subjectProblem = coachSubjectProblem(form.coachId, form.subject, dateOptions.coaches, dateOptions.coachSubjects ?? FEATURES.coachSubjects)
+  if (subjectProblem) errors.push(subjectProblem)
   return errors
 }
 
@@ -101,13 +118,22 @@ function conflicts(form, cls, room, { schedules = [], classes = [] }) {
   return errors
 }
 
+export const SESSION_DESCRIPTION_MAX = 1000
+
 // Buổi học: cls và room là object đã tra cứu từ id; có thể undefined nếu chưa chọn.
+// context: { schedules, classes, coaches, coachSubjects (mặc định FEATURES.coachSubjects) }.
 export function validateSchedule(form, cls, room, context = {}) {
   const errors = []
   if (!cls) errors.push('Vui lòng chọn lớp.')
   if (!room) errors.push('Vui lòng chọn phòng.')
   if (!form.startTime || !form.endTime) errors.push('Vui lòng nhập giờ bắt đầu và giờ kết thúc.')
   else if (form.endTime <= form.startTime) errors.push('Giờ kết thúc phải sau giờ bắt đầu.')
+  // HLV chọn riêng cho buổi học phải dạy bộ môn của lớp (để trống = theo HLV của lớp, đã kiểm tra khi lưu lớp).
+  if (cls) {
+    const subjectProblem = coachSubjectProblem(form.coachId, cls.subject, context.coaches, context.coachSubjects ?? FEATURES.coachSubjects)
+    if (subjectProblem) errors.push(subjectProblem)
+  }
+  if (String(form.description ?? '').length > SESSION_DESCRIPTION_MAX) errors.push(`Lộ trình / mô tả buổi học tối đa ${SESSION_DESCRIPTION_MAX} ký tự.`)
   if (cls && room) {
     if (Number(cls.capacity) > Number(room.capacity)) errors.push(`Sĩ số lớp (${cls.capacity}) vượt sức chứa phòng "${room.name}" (${room.capacity}).`)
     if (!roomMatchesSubject(room, cls.subject)) errors.push(`Phòng "${room.name}" (${roomTypeLabel(room.type)}) không phù hợp với bộ môn ${cls.subject}.`)

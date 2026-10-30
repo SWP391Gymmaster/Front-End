@@ -51,6 +51,11 @@ const errors = {
   'Room code must not be blank': 'Mã phòng không được để trống.',
   'Class code must not be blank': 'Mã lớp không được để trống.',
   'Room is used by existing schedules': 'Phòng đang được dùng trong lịch học, không thể xóa.',
+  'Coach does not teach this subject': 'Huấn luyện viên này không được phân công dạy bộ môn của lớp.',
+  'Coach already has the maximum number of classes in this period': 'Huấn luyện viên đã đủ 5 lớp trong khoảng thời gian này.',
+  'Coach already has a class with the same start and end dates': 'Huấn luyện viên đã có lớp trùng ngày bắt đầu và kết thúc.',
+  'Invalid subject': 'Tên bộ môn không hợp lệ.',
+  'Too many subjects': 'Chọn quá nhiều bộ môn.',
 }
 // Tầng HTTP dùng chung: gửi JSON, gắn token, đọc response và chuyển lỗi thành ApiError.
 // Việc lưu phiên/cập nhật currentUser thuộc backendStore.js, không làm ở file này.
@@ -123,6 +128,8 @@ export function createControllerApi(request) {
     },
     classes: resource('/api/classes'), schedules: resource('/api/schedules'),
     coaches: () => request('/api/coaches'),
+    // FEATURES.coachSubjects: gán bộ môn cho coach, BE trả coach kèm mảng subjects.
+    saveCoachSubjects: (id, subjects) => request(`/api/admin/coaches/${encodeURIComponent(id)}/subjects`, { method: 'PUT', body: { subjects } }),
     adminUsers: {
       list: ({ page = 0, size = 20, q = '', role = '', enabled = '', emailVerified = '' } = {}) => {
         const query = new URLSearchParams({ page, size })
@@ -170,7 +177,10 @@ export function createControllerApi(request) {
 }
 export const mapPackage = p => ({ ...p, active: p.active ?? p.status === 'ACTIVE', days: p.durationDays })
 export const packagePayload = p => ({ packageCode: p.packageCode?.trim(), name: p.name.trim(), description: p.description || '', price: Number(p.price), durationDays: Number(p.days), active: Boolean(p.active) })
-export const mapUser = u => ({ id: u.userId ?? u.id, name: u.fullName, email: u.email, role: u.role.toLowerCase(), phone: u.phone || '' })
+// Id tài khoản vừa tạo từ POST /api/admin/users: BE trả { user: { id, ... }, verificationEmailStatus }; dự phòng id / userId ở cấp ngoài.
+export const createdUserId = r => r?.user?.id ?? r?.user?.userId ?? r?.id ?? r?.userId ?? null
+// subjects: bộ môn coach được dạy (FEATURES.coachSubjects); BE chưa trả thì là mảng rỗng.
+export const mapUser = u => ({ id: u.userId ?? u.id, name: u.fullName, email: u.email, role: u.role.toLowerCase(), phone: u.phone || '', subjects: Array.isArray(u.subjects) ? u.subjects : [] })
 export const vietnamTime = value => !value || /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}+07:00`
 export function mapSession(value, { classes = [], rooms = [], coaches = [], schedules = [] } = {}) {
   const schedule = schedules.find(s => s.id === value.scheduleId) || {}
