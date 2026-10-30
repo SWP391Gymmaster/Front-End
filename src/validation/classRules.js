@@ -1,7 +1,8 @@
 // Luật nghiệp vụ cho Lớp học và Buổi học (T2.4). Hàm thuần để test bằng node --test.
 import { codeProblem, normalizeCode, roomMatchesSubject, roomTypeLabel } from './roomRules.js'
-import { validateClassDates } from './classDates.js'
-import { codePrefix } from '../config/classDefaults.js'
+import { validateClassDates, vnStamp } from './classDates.js'
+import { codePrefix, MAX_CLASSES_PER_COACH } from '../config/classDefaults.js'
+import { coachIsFull, coachLoad, findDuplicate, findOverlaps } from './classDuplicates.js'
 
 export { validateClassDates }
 
@@ -23,9 +24,36 @@ export function classCodeProblem(value, subject, originalCode) {
   return codeProblem(value, 'Mã lớp')
 }
 
+const classLabel = (c) => `${c.classCode} – ${c.name}`
+// Sửa lớp mà không đổi coach và ngày thì không kiểm tra lại trùng / số lớp (để sửa được lớp cũ đã vượt giới hạn).
+export const sameAssignment = (form, original) => Boolean(original) && String(form.coachId ?? '') === String(original.coachId ?? '')
+  && ymd(form.startDate) === ymd(original.startDate) && ymd(form.endDate) === ymd(original.endDate)
+
+// Luật chặn lưu về coach: lớp trùng hoàn toàn (cùng coach, cùng ngày bắt đầu và kết thúc) và coach đã đủ số lớp.
+// options: { classes, coaches, original, today }. Chỉ kiểm tra khi lớp có coach.
+export function coachProblems(form, { classes = [], coaches = [], original = null, today } = {}) {
+  if (form.coachId == null || form.coachId === '' || sameAssignment(form, original)) return []
+  const errors = []
+  const duplicate = findDuplicate(form, classes, { today })
+  if (duplicate) errors.push(`Lớp trùng với lớp ${classLabel(duplicate)}: cùng huấn luyện viên, cùng ngày bắt đầu và ngày kết thúc.`)
+  const load = coachLoad(form.coachId, classes, { startDate: form.startDate, endDate: form.endDate, excludeId: form.id, today })
+  if (coachIsFull(load)) {
+    const name = coaches.find((c) => String(c.id) === String(form.coachId))?.name || `#${form.coachId}`
+    errors.push(`Coach ${name} đã đủ ${MAX_CLASSES_PER_COACH} lớp trong khoảng thời gian này.`)
+  }
+  return errors
+}
+
+// Cảnh báo (không chặn lưu): cùng coach và khoảng ngày giao với các lớp khác.
+export function classWarnings(form, { classes = [], original = null, today } = {}) {
+  if (sameAssignment(form, original)) return []
+  const overlaps = findOverlaps(form, classes, { today })
+  return overlaps.length ? [`Huấn luyện viên đang có lớp giao khoảng ngày: ${overlaps.map(classLabel).join('; ')}.`] : []
+}
+
 // Lớp: mã, tên, sĩ số; khi sửa còn phải khớp với các phòng đã xếp lịch.
 // usedRooms = các phòng mà lớp này đang dùng trong lịch (có thể rỗng khi tạo mới).
-// dateOptions: xem validateClassDates (now, original, timed, requireDates).
+// dateOptions: xem validateClassDates (now, original, timed, requireDates); thêm classes, coaches cho luật coach (coachProblems).
 export function validateClass(form, usedRooms = [], dateOptions = {}) {
   const errors = []
   const code = classCodeProblem(form.classCode, form.subject, dateOptions.original?.classCode)
@@ -40,6 +68,10 @@ export function validateClass(form, usedRooms = [], dateOptions = {}) {
   const wrong = usedRooms.find((r) => !roomMatchesSubject(r, form.subject))
   if (wrong) errors.push(`Bộ môn ${form.subject} không phù hợp với phòng "${wrong.name}" (${roomTypeLabel(wrong.type)}) mà lớp đang dùng.`)
   errors.push(...validateClassDates(form, dateOptions))
+  if (dateOptions.classes) {
+    const today = dateOptions.today || (dateOptions.now ? vnStamp(dateOptions.now).slice(0, 10) : undefined)
+    errors.push(...coachProblems(form, { classes: dateOptions.classes, coaches: dateOptions.coaches, original: dateOptions.original, today }))
+  }
   return errors
 }
 

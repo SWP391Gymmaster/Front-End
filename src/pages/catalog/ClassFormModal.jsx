@@ -3,9 +3,10 @@ import Modal from '../../components/Modal'
 import { useStore } from '../../store/context'
 import { SUBJECTS } from '../../data/seed'
 import { FEATURES } from '../../config/features'
-import { validateClass } from '../../validation/classRules'
+import { classWarnings, sameAssignment, validateClass } from '../../validation/classRules'
+import { coachIsFull, coachLoad } from '../../validation/classDuplicates'
 import { addDays, toFormDate, toFormStamp, vnStamp } from '../../validation/classDates'
-import { codePrefix, subjectDefaults } from '../../config/classDefaults'
+import { codePrefix, MAX_CLASSES_PER_COACH, subjectDefaults } from '../../config/classDefaults'
 import { findByCode, nextFreeCode, suggestClasses } from '../../validation/classCode'
 import { STATUS, buildCatalog } from '../../catalog/catalogRules'
 import '../../catalog.css'
@@ -39,13 +40,25 @@ export default function ClassFormModal({ cls, onClose }) {
   const [active, setActive] = useState(-1)
   const [askReopen, setAskReopen] = useState(null) // lớp đã đóng đang chờ xác nhận mở kỳ mới
   const [copiedFrom, setCopiedFrom] = useState('')
+  const [coachNote, setCoachNote] = useState('') // báo nhẹ khi HLV đang chọn bị bỏ chọn vì đã đủ lớp
   const listId = useId()
   const creating = !target
   const freshDates = creating || reopen
   const coaches = users.filter(u => u.role === 'coach')
+  // Số lớp khác của coach giao với khoảng ngày đang nhập (chưa đủ ngày thì đếm mọi lớp chưa đóng).
+  const loadOf = (coachId, f) => coachLoad(coachId, classes, { startDate: f.startDate, endDate: f.endDate, excludeId: f.id })
+  // Coach đang chọn trở nên đủ lớp (do đổi ngày / chép mẫu) thì bỏ chọn và báo nhẹ.
+  const checkCoach = next => {
+    if (!next.coachId || sameAssignment(next, original) || !coachIsFull(loadOf(next.coachId, next))) return next
+    const name = coaches.find(c => String(c.id) === String(next.coachId))?.name || `#${next.coachId}`
+    setCoachNote(`Đã bỏ chọn HLV ${name} vì đã đủ ${MAX_CLASSES_PER_COACH}/${MAX_CLASSES_PER_COACH} lớp trong khoảng thời gian này.`)
+    return { ...next, coachId: '' }
+  }
   const set = (key, value) => {
     if (creating && key in touched && !touched[key]) setTouched({ ...touched, [key]: true })
-    setForm({ ...form, [key]: value })
+    if (key === 'coachId') setCoachNote('')
+    const next = { ...form, [key]: value }
+    setForm(key === 'startDate' || key === 'endDate' ? checkCoach(next) : next)
   }
   // Đổi bộ môn khi tạo mới: thay tiền tố cũ bằng tiền tố mới (giữ phần đã gõ phía sau); sĩ số theo môn nếu chưa tự sửa.
   const changeSubject = subject => {
@@ -63,7 +76,8 @@ export default function ClassFormModal({ cls, onClose }) {
   const closeList = () => { setListOpen(false); setActive(-1) }
   // Dùng lớp có sẵn làm mẫu: chép thông tin, mã mới chưa ai dùng, để trống các ngày.
   const applyTemplate = source => {
-    setForm({ ...form, ...NO_DATES, name: source.name || '', subject: source.subject || form.subject, description: source.description || '', capacity: source.capacity ?? form.capacity, coachId: source.coachId ?? '', classCode: nextFreeCode(source.classCode, classes) })
+    setCoachNote('')
+    setForm(checkCoach({ ...form, ...NO_DATES, name: source.name || '', subject: source.subject || form.subject, description: source.description || '', capacity: source.capacity ?? form.capacity, coachId: source.coachId ?? '', classCode: nextFreeCode(source.classCode, classes) }))
     setTouched({ classCode: true, capacity: true })
     setCopiedFrom(source.classCode); setAskReopen(null); setError(''); closeList()
   }
@@ -71,7 +85,7 @@ export default function ClassFormModal({ cls, onClose }) {
   const startReopen = source => {
     const base = { ...fromClass(source), ...NO_DATES }
     setTarget(source); setReopen(true); setForm(base); setOriginal(base)
-    setAskReopen(null); setCopiedFrom(''); setError(''); closeList()
+    setAskReopen(null); setCopiedFrom(''); setCoachNote(''); setError(''); closeList()
   }
   const pick = source => {
     closeList()
@@ -93,7 +107,8 @@ export default function ClassFormModal({ cls, onClose }) {
     event.preventDefault()
     if (busy) return
     // Tạo mới / mở kỳ mới: bắt buộc có ngày bắt đầu/kết thúc, không được ở quá khứ. Sửa: chỉ kiểm tra giá trị đã đổi.
-    const problems = validateClass(form, usedRooms, FEATURES.classDates ? { now: new Date(), original, timed, requireDates: freshDates } : { original, timed })
+    // Luật coach (trùng hoàn toàn, đủ 5 lớp) chặn lưu; lớp chỉ giao nhau thì là cảnh báo bên dưới.
+    const problems = validateClass(form, usedRooms, { ...(FEATURES.classDates ? { now: new Date(), requireDates: freshDates } : {}), original, timed, classes, coaches })
     if (existing) problems.unshift(existingText(existing))
     if (problems.length) { setError(problems.join(' ')); return }
     setBusy(true); setError('')
@@ -131,7 +146,19 @@ export default function ClassFormModal({ cls, onClose }) {
   const subjectField = <label>Bộ môn<select value={form.subject} onChange={e => changeSubject(e.target.value)}>{SUBJECTS.map(s => <option key={s}>{s}</option>)}</select></label>
   const descField = <label>Mô tả<textarea rows={3} value={form.description} onChange={e => set('description', e.target.value)} /></label>
   const capacityField = field('capacity', 'Sĩ số tối đa', { type: 'number', min: 1, step: 1, required: true })
-  const coachField = <label>Huấn luyện viên<select value={form.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Chưa phân công</option>{coaches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+  // HLV kèm số lớp theo ngày đang nhập: còn chỗ và ít lớp lên trước; đủ lớp thì không chọn được
+  // (trừ khi đang sửa lớp mà giữ nguyên HLV và ngày như cũ).
+  const coachRows = coaches.map(c => {
+    const n = loadOf(c.id, form)
+    return { c, n, full: coachIsFull(n) && !sameAssignment({ ...form, coachId: c.id }, original) }
+  }).sort((a, b) => a.full - b.full || a.n - b.n || String(a.c.name).localeCompare(String(b.c.name), 'vi'))
+  const coachField = <div className="code-suggest">
+    <label>Huấn luyện viên<select value={form.coachId} onChange={e => set('coachId', e.target.value)}><option value="">Chưa phân công</option>
+      {coachRows.map(({ c, n, full }) => <option key={c.id} value={c.id} disabled={full}>{full ? `${c.name} (đủ ${MAX_CLASSES_PER_COACH}/${MAX_CLASSES_PER_COACH})` : `${c.name} (${n}/${MAX_CLASSES_PER_COACH} lớp)`}</option>)}
+    </select></label>
+    {coachNote && <p className="small muted" role="status">{coachNote}</p>}
+  </div>
+  const warnings = classWarnings(form, { classes, original })
   return <Modal title={creating ? 'Tạo lớp mới' : reopen ? `Mở kỳ mới — ${form.classCode}` : 'Sửa lớp học'} onClose={() => { if (!busy) onClose() }} width={640}>
     <form className="form" onSubmit={submit} noValidate>
       <fieldset className="form api-fieldset" disabled={busy}>
@@ -147,7 +174,8 @@ export default function ClassFormModal({ cls, onClose }) {
         </>}
         {creating && <>{codeField}{nameField}{descField}{capacityField}{coachField}</>}
       </fieldset>
-      {error && <div className="alert alert-error" role="alert">{error}</div>}
+      {warnings.map(w => <div key={w} className="alert alert-info" role="status">Cảnh báo: {w} Vẫn có thể lưu.</div>)}
+      {error &&<div className="alert alert-error" role="alert">{error}</div>}
       <div className="form-actions"><button type="button" className="btn" disabled={busy} onClick={onClose}>Hủy</button><button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Đang xử lý...' : 'Lưu thay đổi'}</button></div>
     </form>
   </Modal>
