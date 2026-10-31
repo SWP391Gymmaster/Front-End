@@ -188,7 +188,7 @@ export default function ClassFormModal({ cls, onClose }) {
         </>}
         {coachField}
       </fieldset>
-      {warnings.map(w => <div key={w} className="alert alert-info" role="status">Cảnh báo: {w} Vẫn có thể lưu.</div>)}
+      {warnings.map(w => <div key={w} className="alert alert-info" role="status">{w}</div>)}
       {error &&<div className="alert alert-error" role="alert">{error}</div>}
       <div className="form-actions"><button type="button" className="btn" disabled={busy} onClick={onClose}>Hủy</button><button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Đang xử lý...' : 'Lưu thay đổi'}</button></div>
     </form>

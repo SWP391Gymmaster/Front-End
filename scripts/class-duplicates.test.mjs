@@ -29,7 +29,8 @@ test('giao nhau: cùng coach, chỉ giao khoảng ngày → cảnh báo, không 
   assert.equal(findDuplicate(f, classes, { today }), undefined)
   assert.deepEqual(findOverlaps(f, classes, { today }).map((c) => c.id), [1, 2])
   assert.deepEqual(coachProblems(f, { classes, coaches, today }), [])
-  assert.match(classWarnings(f, { classes, today })[0], /CLS-T-1 – Lớp 1; CLS-T-2 – Lớp 2/)
+  assert.deepEqual(classWarnings(f, { classes, today }), ['Huấn luyện viên đang có 2 lớp gồm: CLS-T-1, CLS-T-2.'])
+  assert.deepEqual(classWarnings(form({ startDate: '2026-11-15', endDate: '2026-11-20' }), { classes, today }), ['Huấn luyện viên đang có 1 lớp gồm: CLS-T-1.'])
 })
 
 test('trùng hoàn toàn không nằm trong danh sách giao nhau', () => {

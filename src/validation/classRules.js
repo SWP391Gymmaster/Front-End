@@ -62,7 +62,7 @@ export function coachProblems(form, { classes = [], coaches = [], original = nul
 export function classWarnings(form, { classes = [], original = null, today } = {}) {
   if (sameAssignment(form, original)) return []
   const overlaps = findOverlaps(form, classes, { today })
-  return overlaps.length ? [`Huấn luyện viên đang có lớp giao khoảng ngày: ${overlaps.map(classLabel).join('; ')}.`] : []
+  return overlaps.length ? [`Huấn luyện viên đang có ${overlaps.length} lớp gồm: ${overlaps.map((c) => c.classCode).join(', ')}.`] : []
 }
 
 // Lớp: mã, tên, sĩ số; khi sửa còn phải khớp với các phòng đã xếp lịch.
