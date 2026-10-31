@@ -42,7 +42,7 @@ const MESSAGES = {
   'Class session is full': 'Lớp đã đủ số lượng, vui lòng chọn buổi hoặc lớp khác',
   'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này',
   'Class session has already started': 'Buổi học đã bắt đầu, không thể đăng ký hoặc hủy',
-  'Membership package is expired or does not cover this class session': 'Gói tập đã hết hạn hoặc không có hiệu lực vào ngày học. Vui lòng gia hạn trước khi đăng ký',
+  'Membership package is expired or does not cover this class session': 'Bạn chưa mua gói hoặc hiệu lực gói tập không bao gồm buổi học này. Vui lòng mua gói tập!',
   'Membership package is currently inactive': 'Gói tập hiện không còn được mở bán',
   'Payment is already completed': 'Khoản thanh toán này đã được xác nhận',
   'Cannot complete a cancelled payment': 'Không thể xác nhận khoản thanh toán đã hủy',
@@ -59,7 +59,7 @@ const MESSAGES = {
   'Membership package is currently inactive': 'Gói tập đang tạm ngưng bán',
   'You are not authorized to pay for this invoice': 'Bạn không có quyền thanh toán hóa đơn này',
   'Membership package is expired or does not cover this class session':
-    'Gói tập đã hết hạn hoặc không còn hiệu lực vào ngày học này. Vui lòng mua hoặc gia hạn gói.',
+    'Bạn chưa mua gói hoặc hiệu lực gói tập không bao gồm buổi học này. Vui lòng mua gói tập!',
   'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này rồi',
   'Class session is full': 'Buổi học đã đủ chỗ',
   'Class session has already started': 'Buổi học đã bắt đầu, không thể đăng ký hoặc hủy',

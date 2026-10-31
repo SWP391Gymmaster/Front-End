@@ -17,9 +17,11 @@ export const TIME_SLOTS = [
 export const EMPTY_FILTERS = { subject: '', coachId: '', date: '', slot: '', status: '', hasSeats: false, showClosed: false }
 
 const at = (value) => new Date(vietnamTime(value))
-// Ngày không kèm giờ: mốc mở là 00:00, mốc đóng là hết ngày đó.
-const dayStart = (value) => (value ? at(`${String(value).slice(0, 10)}T00:00:00`) : null)
-const dayEnd = (value) => (value ? at(`${String(value).slice(0, 10)}T23:59:59`) : null)
+// Mốc thời gian đăng ký sớm: BE có thể trả ngày (yyyy-MM-dd) hoặc ngày giờ (yyyy-MM-ddTHH:mm:ss).
+// Chỉ có ngày thì mốc mở là 00:00 và mốc đóng là hết ngày đó; có giờ thì dùng đúng giờ đó.
+const hasTime = (value) => String(value).length > 10
+const dayStart = (value) => (!value ? null : hasTime(value) ? at(`${String(value).slice(0, 16)}:00`) : at(`${String(value).slice(0, 10)}T00:00:00`))
+const dayEnd = (value) => (!value ? null : hasTime(value) ? at(`${String(value).slice(0, 16)}:59`) : at(`${String(value).slice(0, 10)}T23:59:59`))
 
 // Vòng đời của lớp theo ngày (chỉ có tác dụng khi BE đã trả các trường ngày):
 //  - Quá ngày kết thúc lớp             → closed   (Đã đóng, mặc định ẩn)
@@ -34,7 +36,8 @@ export function windowStatus(cls, now) {
   return null
 }
 
-// Hội viên được đăng ký không: lớp đang mở thì được; lớp chưa mở chỉ được khi đã tới ngày mở đăng ký sớm.
+// Hội viên được đăng ký LỚP không: lớp đang mở thì được; lớp chưa mở chỉ được khi đã tới giờ mở đăng ký sớm.
+// (Đăng ký buổi học còn chặt hơn: chỉ khi lớp đã mở thật, xem sessionsOpen trong buildCatalog.)
 export function canRegister(cls, status, now) {
   if (status === 'open') return true
   if (status !== 'upcoming') return false
@@ -44,7 +47,9 @@ export function canRegister(cls, status, now) {
 
 // available: danh sách buổi còn chỗ do BE trả (chỉ hội viên có); null nếu chưa biết sĩ số.
 // BE chỉ trả buổi tương lai còn chỗ, nên buổi tương lai không nằm trong danh sách ⇒ đã đầy.
-export function buildCatalog({ classes, schedules, available = null, now = new Date() }) {
+// classStats (khi bật đăng ký lớp): [{ classId, registeredCount, remainingSlots, registeredByMe }] — sĩ số tính theo số hội viên đã đăng ký LỚP.
+export function buildCatalog({ classes, schedules, available = null, classStats = null, now = new Date() }) {
+  const stats = classStats ? new Map(classStats.map((c) => [Number(c.classId), c])) : null
   const free = available ? new Map(available.map((s) => [Number(s.id), s])) : null
   return classes.map((cls) => {
     const sessions = schedules
@@ -63,11 +68,13 @@ export function buildCatalog({ classes, schedules, available = null, now = new D
       })
     const upcoming = sessions.filter((s) => !s.closed)
     const hasCounts = Boolean(free)
+    const classStat = stats ? (stats.get(Number(cls.id)) || { registeredCount: 0, remainingSlots: cls.capacity, registeredByMe: false }) : null
     let status = windowStatus(cls, now)
     if (!status) {
       status = 'open'
       if (!sessions.length) status = 'upcoming' // chưa xếp lịch
       else if (!upcoming.length) status = 'closed'
+      else if (classStat) { if (classStat.remainingSlots === 0) status = 'full' }
       else if (hasCounts && upcoming.every((s) => s.full)) status = 'full'
     }
     const next = upcoming.find((s) => !s.full) || upcoming[0] || null
@@ -75,8 +82,13 @@ export function buildCatalog({ classes, schedules, available = null, now = new D
     const range = sessions.length
       ? { firstDate: sessions[0].startTime.slice(0, 10), lastDate: sessions[sessions.length - 1].startTime.slice(0, 10), sessionCount: sessions.length }
       : { firstDate: '', lastDate: '', sessionCount: 0 }
+    const timeOk = canRegister(cls, status, now)
+    // Đăng ký BUỔI HỌC chỉ mở khi lớp đã mở thật (sau khi đăng ký sớm kết thúc). Trong thời gian đăng ký sớm chỉ đăng ký được LỚP.
+    const sessionsOpen = status === 'open' || status === 'full'
+    // Đăng ký LỚP: trong thời gian cho phép, lớp còn chỗ và hội viên chưa đăng ký lớp.
+    const canJoin = Boolean(classStat) && timeOk && !classStat.registeredByMe && classStat.remainingSlots > 0
     return {
-      cls, sessions, upcoming, next, status, canRegister: canRegister(cls, status, now), hasCounts, ...range,
+      cls, sessions, upcoming, next, status, canRegister: timeOk, sessionsOpen, classStat, canJoin, hasCounts, ...range,
       coachIds: [...new Set([cls.coachId, ...sessions.map((s) => s.coachId)].filter(Boolean).map(Number))],
     }
   })

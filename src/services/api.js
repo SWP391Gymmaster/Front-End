@@ -1,6 +1,7 @@
 ﻿// All Spring controllers share this transport. /backend is proxied by Vite in development.
 export class ApiError extends Error {
-  constructor(message, status = 0, details = {}) { super(message); this.name = 'ApiError'; this.status = status; this.details = details }
+  // code = thông điệp gốc từ BE (tiếng Anh), dùng để FE nhận diện loại lỗi
+  constructor(message, status = 0, details = {}, code = '') { super(message); this.name = 'ApiError'; this.status = status; this.details = details; this.code = code }
 }
 const errors = {
   'Payment not found': 'Không tìm thấy thanh toán.',
@@ -26,16 +27,16 @@ const errors = {
   'Authentication required': 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
   'Access denied': 'Bạn không có quyền thực hiện thao tác này.',
   'Invalid request data': 'Dữ liệu không hợp lệ. Vui lòng kiểm tra biểu mẫu.',
-  'Membership package is expired or does not cover this class session': 'Gói tập đã hết hạn hoặc không bao phủ buổi học. Vui lòng liên hệ lễ tân.',
+  'Membership package is expired or does not cover this class session': 'Bạn chưa mua gói hoặc hiệu lực gói tập không bao gồm buổi học này. Vui lòng mua gói tập!',
   'Class session has already started': 'Buổi học đã bắt đầu.',
   'Already enrolled in this class session': 'Bạn đã đăng ký buổi học này.',
   'Class session is full': 'Buổi học đã đủ chỗ.',
-  'Not registered in this class': 'Bạn cần đăng ký lớp trước khi đăng ký buổi học của lớp này.',
+    'Not registered in this class': 'Bạn cần đăng ký lớp trước khi đăng ký buổi học của lớp này.',
   'Already registered in this class': 'Bạn đã đăng ký lớp này.',
   'Class is full': 'Lớp đã đủ sĩ số.',
   'Class registration not found': 'Bạn chưa đăng ký lớp này.',
   'Class registration is not open': 'Lớp chưa mở đăng ký hoặc đã đóng đăng ký.',
-  'Enrollment not found': 'Không tìm thấy đăng ký buổi học.',
+  'Class session registration is not open yet': 'Chưa mở đăng ký buổi học. Bạn có thể đăng ký buổi học sau khi thời gian đăng ký sớm kết thúc.',
   'Schedule not found': 'Buổi học không còn khả dụng. Vui lòng tải lại lịch.',
   'Coach already has a schedule during this time': 'Huấn luyện viên bị trùng lịch trong khung giờ này.',
   'Room is already booked during this time': 'Phòng tập bị trùng lịch trong khung giờ này.',
@@ -50,6 +51,11 @@ const errors = {
   'Room code must not be blank': 'Mã phòng không được để trống.',
   'Class code must not be blank': 'Mã lớp không được để trống.',
   'Room is used by existing schedules': 'Phòng đang được dùng trong lịch học, không thể xóa.',
+  'Coach does not teach this subject': 'Huấn luyện viên này không được phân công dạy bộ môn của lớp.',
+  'Coach already has the maximum number of classes in this period': 'Huấn luyện viên đã đủ 5 lớp trong khoảng thời gian này.',
+  'Coach already has a class with the same start and end dates': 'Huấn luyện viên đã có lớp trùng ngày bắt đầu và kết thúc.',
+  'Invalid subject': 'Tên bộ môn không hợp lệ.',
+  'Too many subjects': 'Chọn quá nhiều bộ môn.',
 }
 // Tầng HTTP dùng chung: gửi JSON, gắn token, đọc response và chuyển lỗi thành ApiError.
 // Việc lưu phiên/cập nhật currentUser thuộc backendStore.js, không làm ở file này.
@@ -86,7 +92,7 @@ export function createApiClient({ baseUrl = '/backend', getToken = () => null, g
       if (!message || (response.status >= 500 && !errors[raw])) message = response.status === 403 ? errors['Access denied'] : response.status === 401 ? errors['Authentication required'] : 'Yêu cầu thất bại. Vui lòng thử lại.'
       if (/email.*(already|exists)/i.test(message)) message = 'Email đã được sử dụng'
       if (/(username|user name).*(already|exists)/i.test(message)) message = 'Tên đăng nhập không hợp lệ hoặc đã được sử dụng.'
-      throw new ApiError(message, response.status, result?.errors || {})
+      throw new ApiError(message, response.status, result?.errors || {}, raw || '')
     }
     // A dev-server HTML fallback must never be treated as API data.
     if (typeof result === 'string' && /<(!doctype|html)/i.test(result)) throw new ApiError('Địa chỉ API không hợp lệ. Kiểm tra cấu hình kết nối.')
@@ -122,6 +128,8 @@ export function createControllerApi(request) {
     },
     classes: resource('/api/classes'), schedules: resource('/api/schedules'),
     coaches: () => request('/api/coaches'),
+    // FEATURES.coachSubjects: gán bộ môn cho coach, BE trả coach kèm mảng subjects.
+    saveCoachSubjects: (id, subjects) => request(`/api/admin/coaches/${encodeURIComponent(id)}/subjects`, { method: 'PUT', body: { subjects } }),
     adminUsers: {
       list: ({ page = 0, size = 20, q = '', role = '', enabled = '', emailVerified = '' } = {}) => {
         const query = new URLSearchParams({ page, size })
@@ -161,6 +169,7 @@ export function createControllerApi(request) {
     enroll: id => request(`/api/member/class-sessions/${encodeURIComponent(id)}/enrollment`, { method: 'POST' }),
     cancel: id => request(`/api/member/class-sessions/${encodeURIComponent(id)}/enrollment`, { method: 'DELETE' }),
         // Đăng ký LỚP (cần BE hỗ trợ, bật FEATURES.classRegistration)
+      // Đăng ký LỚP (cần BE hỗ trợ, bật FEATURES.classRegistration)
     classStats: () => request('/api/member/classes'),
     registerClass: id => request(`/api/member/classes/${encodeURIComponent(id)}/registration`, { method: 'POST' }),
     cancelClassRegistration: id => request(`/api/member/classes/${encodeURIComponent(id)}/registration`, { method: 'DELETE' }),
@@ -168,7 +177,10 @@ export function createControllerApi(request) {
 }
 export const mapPackage = p => ({ ...p, active: p.active ?? p.status === 'ACTIVE', days: p.durationDays })
 export const packagePayload = p => ({ packageCode: p.packageCode?.trim(), name: p.name.trim(), description: p.description || '', price: Number(p.price), durationDays: Number(p.days), active: Boolean(p.active) })
-export const mapUser = u => ({ id: u.userId ?? u.id, name: u.fullName, email: u.email, role: u.role.toLowerCase(), phone: u.phone || '' })
+// Id tài khoản vừa tạo từ POST /api/admin/users: BE trả { user: { id, ... }, verificationEmailStatus }; dự phòng id / userId ở cấp ngoài.
+export const createdUserId = r => r?.user?.id ?? r?.user?.userId ?? r?.id ?? r?.userId ?? null
+// subjects: bộ môn coach được dạy (FEATURES.coachSubjects); BE chưa trả thì là mảng rỗng.
+export const mapUser = u => ({ id: u.userId ?? u.id, name: u.fullName, email: u.email, role: u.role.toLowerCase(), phone: u.phone || '', subjects: Array.isArray(u.subjects) ? u.subjects : [] })
 export const vietnamTime = value => !value || /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}+07:00`
 export function mapSession(value, { classes = [], rooms = [], coaches = [], schedules = [] } = {}) {
   const schedule = schedules.find(s => s.id === value.scheduleId) || {}
