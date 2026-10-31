@@ -28,9 +28,10 @@ export const seedData = {
     { id: 'u7', role: 'member', name: 'Hoàng Đức Anh', email: 'anh@gym.vn', password: '123456', phone: '0987654321', gender: 'Nam', goal: 'Tăng cơ' },
   ],
   packages: [
-    { id: 'p1', name: 'Gói 1 tháng', price: 500000, days: 30, description: 'Tập không giới hạn khu Gym', active: true },
-    { id: 'p2', name: 'Gói 3 tháng', price: 1350000, days: 90, description: 'Tiết kiệm 10%, tham gia 2 lớp nhóm', active: true },
-    { id: 'p3', name: 'Gói 12 tháng', price: 4800000, days: 365, description: 'Tiết kiệm 20%, không giới hạn lớp nhóm', active: true },
+    { id: 'p1', packageCode: 'PKG-BRONZE', name: 'Bronze', price: 900000, days: 90, description: 'Gói cơ bản 90 ngày. Tập Gym tự do, đăng ký tối đa 2 lớp nhóm cùng lúc.', active: true },
+    { id: 'p2', packageCode: 'PKG-SILVER', name: 'Silver', price: 1620000, days: 180, description: 'Gói 180 ngày (giảm 10%). Tập Gym tự do, đăng ký tối đa 4 lớp nhóm cùng lúc, ưu tiên đặt chỗ sớm.', active: true },
+    { id: 'p3', packageCode: 'PKG-GOLD', name: 'Gold', price: 3000000, days: 395, description: 'Gói 1 năm + 30 ngày. Không giới hạn lớp nhóm, ưu tiên đặt chỗ sớm, tập thử PT 2 buổi miễn phí.', active: true },
+    { id: 'p4', packageCode: 'PKG-DIAMOND', name: 'Diamond', price: 9000000, days: 1185, description: 'Gói 3 năm + 3 tháng. Không giới hạn lớp nhóm, ưu tiên đặt chỗ VIP, tập PT 4 buổi/tháng miễn phí, tủ đồ cá nhân.', active: true },
   ],
   rooms: [
     { id: 'r1', name: 'Phòng Gym A', capacity: 40 },
@@ -42,9 +43,9 @@ export const seedData = {
     { id: 'c2', name: 'Boxing cơ bản', subject: 'Boxing', roomId: 'r3', coachId: 'u3', days: ['T3', 'T5'], start: '18:00', end: '19:30', capacity: 15 },
   ],
   memberships: [
-    { id: 'm1', userId: 'u7', packageId: 'p2', startDate: addDays(today, -20), endDate: addDays(today, 70) },
+    { id: 'm1', userId: 'u7', packageId: 'p2', startDate: addDays(today, -20), endDate: addDays(today, 160) },
   ],
   payments: [
-    { id: 'pay1', invoiceNo: 'HD0001', userId: 'u7', packageId: 'p2', amount: 1350000, method: 'Tiền mặt', date: addDays(today, -20), channel: 'Tại quầy', staffId: 'u2' },
+    { id: 'pay1', invoiceNo: 'HD0001', userId: 'u7', packageId: 'p2', amount: 1620000, method: 'Tiền mặt', date: addDays(today, -20), channel: 'Tại quầy', staffId: 'u2' },
   ],
 }
