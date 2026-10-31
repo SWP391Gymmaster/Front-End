@@ -12,6 +12,9 @@
 .code-suggest-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; list-style: none; margin: 4px 0 0; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); max-height: 260px; overflow-y: auto; }
 .code-suggest-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; font-size: 13px; cursor: pointer; }
 .code-suggest-list li.active { background: var(--primary-soft); }
+/* Ô chỉ đọc trong form buổi học (HLV theo lớp, phòng theo buổi gần nhất) */
+.readonly-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.readonly-value { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 40px; padding: 6px 12px; border: 1px dashed var(--border); border-radius: 9px; background: var(--surface); }
 .code-suggest-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .catalog-session-msg { flex-basis: 100%; margin: 0; }
 /* Lộ trình buổi học: giữ xuống dòng, tối đa 3 dòng cho gọn; di chuột qua để xem đủ (title). */
