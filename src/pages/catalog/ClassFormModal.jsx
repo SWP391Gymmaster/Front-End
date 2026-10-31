@@ -56,7 +56,8 @@ export default function ClassFormModal({ cls, onClose }) {
       setCoachNote(`Đã bỏ chọn HLV ${name} vì không dạy bộ môn ${next.subject}.`)
       return { ...next, coachId: '' }
     }
-    if (sameAssignment(next, original) || !coachIsFull(loadOf(next.coachId, next))) return next
+    // Chưa đủ hai ngày thì không bỏ chọn vì lý do đủ lớp (khi lưu vẫn bị chặn nếu đủ 5 lớp).
+    if (!next.startDate || !next.endDate || sameAssignment(next, original) || !coachIsFull(loadOf(next.coachId, next))) return next
     setCoachNote(`Đã bỏ chọn HLV ${name} vì đã đủ ${MAX_CLASSES_PER_COACH}/${MAX_CLASSES_PER_COACH} lớp trong khoảng thời gian này.`)
     return { ...next, coachId: '' }
   }
@@ -176,8 +177,8 @@ export default function ClassFormModal({ cls, onClose }) {
     <form className="form" onSubmit={submit} noValidate>
       <fieldset className="form api-fieldset" disabled={busy}>
         {reopen && <div className="alert alert-info" role="status">Mở kỳ mới cho lớp {form.classCode}: giữ mã và thông tin cũ, hãy nhập lại ngày bắt đầu/kết thúc và đăng ký sớm cho kỳ mới.</div>}
-        {/* Tạo mới: chọn bộ môn và thời gian trước để điền sẵn mã/sĩ số. Sửa: giữ thứ tự cũ. */}
-        {!creating ? <>{codeField}{nameField}{subjectField}{descField}{capacityField}{coachField}</> : <>{subjectField}</>}
+        {/* Tạo và sửa cùng thứ tự: bộ môn → mã → tên → mô tả → sĩ số → ngày lớp → đăng ký sớm → HLV. */}
+        {subjectField}{codeField}{nameField}{descField}{capacityField}
         {FEATURES.classDates && <>
           <p className="small muted">Thời gian lớp. Ngày bắt đầu phải từ ngày mai trở đi. Đăng ký sớm phải bắt đầu từ bây giờ và kết thúc trước 00:00 ngày bắt đầu lớp. Khi lớp đã đóng, chỉ cần đổi các ngày này để mở kỳ mới, không cần tạo lớp trùng mã.</p>
           {field('startDate', 'Ngày bắt đầu lớp', { type: 'date', min: freshDates ? tomorrow : undefined, required: freshDates })}
@@ -185,7 +186,7 @@ export default function ClassFormModal({ cls, onClose }) {
           {field('registrationOpenAt', timed ? 'Mở đăng ký sớm từ (ngày giờ)' : 'Mở đăng ký sớm từ ngày', { type: regType, min: freshDates ? regMin : undefined })}
           {field('registrationCloseAt', timed ? 'Kết thúc đăng ký sớm lúc (ngày giờ)' : 'Kết thúc đăng ký sớm ngày', { type: regType, min: form.registrationOpenAt || (freshDates ? regMin : undefined) })}
         </>}
-        {creating && <>{codeField}{nameField}{descField}{capacityField}{coachField}</>}
+        {coachField}
       </fieldset>
       {warnings.map(w => <div key={w} className="alert alert-info" role="status">Cảnh báo: {w} Vẫn có thể lưu.</div>)}
       {error &&<div className="alert alert-error" role="alert">{error}</div>}
